@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
+import { paths } from "@/lib/paths";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar, Clock, CalendarPlus } from "lucide-react";
+import { CalendarPlus } from "lucide-react";
 import { api } from "@/lib/api";
 import { PageHeader, StatCard } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,6 @@ import { ErrorState } from "@/components/ui/section-states";
 import type { PaginatedBookings } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function CustomerHomePage() {
   const { data, isLoading, isError, refetch } = useQuery({
@@ -48,7 +48,7 @@ export function CustomerHomePage() {
         description="View status and history for your service appointments"
         action={
           <Button asChild size="sm">
-            <Link to="/bookings/new">
+            <Link to={paths.bookingsNew}>
               <CalendarPlus className="h-4 w-4" />
               Book a service
             </Link>
@@ -57,20 +57,20 @@ export function CustomerHomePage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <StatCard label="Active bookings" value={String(active.length)} icon={Clock} index={0} />
-        <StatCard label="Completed services" value={String(completed.length)} icon={Calendar} index={1} />
+        <StatCard label="Active bookings" value={String(active.length)} variant="compact" />
+        <StatCard label="Completed services" value={String(completed.length)} variant="compact" />
       </div>
 
-      <Card className="animate-fade-in-up stagger-3">
-        <CardHeader>
-          <CardTitle className="text-base">Recent bookings</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      <div className="ops-panel">
+        <div className="border-b border-border px-4 py-3">
+          <h2 className="text-body font-semibold">Recent bookings</h2>
+        </div>
+        <div className="space-y-0 p-2">
           {bookings.length === 0 ? (
             <div className="space-y-3 text-center">
               <p className="text-sm text-muted-foreground">No bookings yet.</p>
               <Button asChild size="sm" variant="outline">
-                <Link to="/bookings/new">
+                <Link to={paths.bookingsNew}>
                   <CalendarPlus className="h-4 w-4" />
                   Book your first service
                 </Link>
@@ -80,8 +80,8 @@ export function CustomerHomePage() {
             bookings.slice(0, 10).map((b) => (
               <Link
                 key={b.id}
-                to={`/bookings/${b.id}`}
-                className="flex items-center justify-between rounded-md border border-border p-3 transition-colors hover:bg-muted/40"
+                to={paths.booking(b.id)}
+                className="flex items-center justify-between rounded-[8px] border border-border p-3 transition-colors hover:bg-accent"
               >
                 <div>
                   <p className="font-medium">{b.serviceCategory.name}</p>
@@ -93,8 +93,8 @@ export function CustomerHomePage() {
               </Link>
             ))
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Search, Download, Filter } from "lucide-react";
+import { paths } from "@/lib/paths";
+import { Search, Download } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
@@ -228,19 +229,21 @@ export function BookingsPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => exportCsv()}
-                disabled={exporting || (isLoading && !data)}
+                loading={exporting}
+                loadingText="Exporting..."
+                disabled={isLoading && !data}
               >
                 <Download className="h-4 w-4" />
-                {exporting ? "Exporting..." : "Export CSV"}
+                Export CSV
               </Button>
             )}
           </div>
         }
       />
 
-      <div className="animate-fade-in-up stagger-1 space-y-3">
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <div className="relative flex-1">
+      <div className="space-y-3">
+        <div className="ops-toolbar">
+          <div className="relative min-w-[200px] flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="pl-9 transition-shadow focus:shadow-sm"
@@ -253,7 +256,7 @@ export function BookingsPage() {
             />
           </div>
           <select
-            className="h-9 rounded-md border border-border bg-card px-3 text-sm transition-colors hover:bg-accent/50"
+            className="h-9 rounded-[8px] border border-border bg-card px-3 text-body"
             value={status}
             onChange={(e) => {
               setStatus(e.target.value);
@@ -266,7 +269,7 @@ export function BookingsPage() {
             ))}
           </select>
           <select
-            className="h-9 rounded-md border border-border bg-card px-3 text-sm transition-colors hover:bg-accent/50"
+            className="h-9 rounded-[8px] border border-border bg-card px-3 text-body"
             value={`${sortBy}-${sortOrder}`}
             onChange={(e) => {
               const [sb, so] = e.target.value.split("-");
@@ -283,11 +286,8 @@ export function BookingsPage() {
         </div>
 
         {isAdmin && (
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Filter className="h-4 w-4" />
-              <span>Filters</span>
-            </div>
+          <div className="ops-toolbar">
+            <span className="text-meta">Filters</span>
             <Input
               type="date"
               className="h-9 w-auto"
@@ -309,7 +309,7 @@ export function BookingsPage() {
               aria-label="End date"
             />
             <select
-              className="h-9 rounded-md border border-border bg-card px-3 text-sm transition-colors hover:bg-accent/50"
+              className="h-9 rounded-[8px] border border-border bg-card px-3 text-body"
               value={mechanicId}
               onChange={(e) => {
                 setMechanicId(e.target.value);
@@ -322,7 +322,7 @@ export function BookingsPage() {
               ))}
             </select>
             <select
-              className="h-9 rounded-md border border-border bg-card px-3 text-sm transition-colors hover:bg-accent/50"
+              className="h-9 rounded-[8px] border border-border bg-card px-3 text-body"
               value={serviceCategoryId}
               onChange={(e) => {
                 setServiceCategoryId(e.target.value);
@@ -343,7 +343,7 @@ export function BookingsPage() {
         )}
       </div>
 
-      <section className="animate-fade-in-up stagger-2">
+      <section>
         {isLoading ? (
           <TableSkeleton rows={10} columns={6} />
         ) : isError ? (
@@ -353,42 +353,70 @@ export function BookingsPage() {
           />
         ) : data?.data.length === 0 ? (
           <EmptyState
-            title="No bookings found"
-            description="Try adjusting your search or filter criteria."
+            title="No bookings match your filters"
+            description="Clear filters or broaden your search to see more results."
           />
         ) : (
           <>
+            <div className="space-y-3 md:hidden">
+              {(data?.data ?? []).map((booking) => (
+                <div
+                  key={booking.id}
+                  className={cn(
+                    "ops-panel space-y-2 p-4",
+                    flashIds.has(booking.id) && "animate-flash-update"
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <Link
+                      to={paths.booking(booking.id)}
+                      className="font-medium text-foreground underline-offset-4 hover:underline"
+                    >
+                      {booking.customer.user.name}
+                    </Link>
+                    <StatusBadge status={booking.status} />
+                  </div>
+                  <p className="text-body">{booking.serviceCategory.name}</p>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-meta text-muted-foreground">
+                    <span className="font-mono tabular-nums">
+                      {formatCurrency(booking.amount)}
+                    </span>
+                    <span>{formatDate(booking.scheduledAt)}</span>
+                    <span>{booking.mechanic?.user.name ?? "No mechanic"}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             <div
               className={cn(
-                "overflow-hidden rounded-lg border border-border transition-opacity duration-300",
+                "ops-panel overflow-hidden hidden md:block",
                 isFetching && "opacity-70"
               )}
             >
-              <table className="w-full text-sm">
-                <thead className="border-b border-border bg-muted/50">
+              <table className="ops-table">
+                <thead>
                   <tr>
-                    <th className="px-4 py-3 text-left font-medium">Customer</th>
-                    <th className="px-4 py-3 text-left font-medium">Service</th>
-                    <th className="px-4 py-3 text-left font-medium">Status</th>
-                    <th className="px-4 py-3 text-left font-medium">Amount</th>
-                    <th className="px-4 py-3 text-left font-medium">Scheduled</th>
-                    <th className="px-4 py-3 text-left font-medium">Mechanic</th>
+                    <th>Customer</th>
+                    <th>Service</th>
+                    <th>Status</th>
+                    <th className="num">Amount</th>
+                    <th>Scheduled</th>
+                    <th>Mechanic</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(data?.data ?? []).map((booking, i) => (
+                  {(data?.data ?? []).map((booking) => (
                     <tr
                       key={booking.id}
                       className={cn(
-                        "border-b border-border transition-colors hover:bg-muted/30 animate-fade-in",
                         flashIds.has(booking.id) && "animate-flash-update"
                       )}
-                      style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
                     >
                       <td className="px-4 py-3">
                         <Link
-                          to={`/bookings/${booking.id}`}
-                          className="font-medium text-primary transition-colors hover:underline"
+                          to={paths.booking(booking.id)}
+                          className="font-medium text-foreground underline-offset-4 hover:underline"
                         >
                           {booking.customer.user.name}
                         </Link>
@@ -397,7 +425,7 @@ export function BookingsPage() {
                       <td className="px-4 py-3">
                         <StatusBadge status={booking.status} />
                       </td>
-                      <td className="px-4 py-3 tabular-nums">{formatCurrency(booking.amount)}</td>
+                      <td className="num">{formatCurrency(booking.amount)}</td>
                       <td className="px-4 py-3 text-muted-foreground">
                         {formatDate(booking.scheduledAt)}
                       </td>
@@ -411,7 +439,7 @@ export function BookingsPage() {
             </div>
 
             {data && data.pagination.totalPages > 1 && (
-              <div className="mt-4 flex items-center justify-between animate-fade-in">
+              <div className="mt-4 flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
                   Page {data.pagination.page} of {data.pagination.totalPages} ({data.pagination.total} total)
                 </p>

@@ -6,8 +6,11 @@ import { SocketProvider } from "@/contexts/SocketContext";
 import { WakingUpProvider, WakingUpOverlay } from "@/contexts/WakingUpContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { RoleGuard } from "@/components/RoleGuard";
+import { MarketingLayout } from "@/components/layout/MarketingLayout";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { LandingPage } from "@/pages/LandingPage";
 import { LoginPage } from "@/pages/LoginPage";
+import { SignupPage } from "@/pages/SignupPage";
 import { HomePage } from "@/pages/HomePage";
 import { AnalyticsPage } from "@/pages/AnalyticsPage";
 import { BookingsPage } from "@/pages/BookingsPage";
@@ -16,6 +19,7 @@ import { MechanicsPage } from "@/pages/MechanicsPage";
 import { MechanicDetailPage } from "@/pages/MechanicDetailPage";
 import { CustomersPage } from "@/pages/CustomersPage";
 import { CreateBookingPage } from "@/pages/CreateBookingPage";
+import { paths } from "@/lib/paths";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,8 +38,13 @@ export function App() {
           <SocketProvider>
             <BrowserRouter>
               <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route element={<ProtectedRoute />}>
+                <Route element={<MarketingLayout />}>
+                  <Route path={paths.landing} element={<LandingPage />} />
+                  <Route path={paths.login} element={<LoginPage />} />
+                  <Route path={paths.signup} element={<SignupPage />} />
+                </Route>
+
+                <Route path={paths.home} element={<ProtectedRoute />}>
                   <Route element={<AppLayout />}>
                     <Route index element={<HomePage />} />
                     <Route
@@ -82,7 +91,8 @@ export function App() {
                     />
                   </Route>
                 </Route>
-                <Route path="*" element={<Navigate to="/" replace />} />
+
+                <Route path="*" element={<Navigate to={paths.landing} replace />} />
               </Routes>
             </BrowserRouter>
             <WakingUpOverlay />

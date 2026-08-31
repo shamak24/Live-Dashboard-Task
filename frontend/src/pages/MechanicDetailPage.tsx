@@ -1,10 +1,10 @@
 import { useParams, Link } from "react-router-dom";
+import { paths } from "@/lib/paths";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { formatCurrency, formatDate, cn } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Booking } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   PageHeaderSkeleton,
   TableSkeleton,
@@ -36,14 +36,10 @@ export function MechanicDetailPage() {
         <PageHeaderSkeleton />
         <div className="grid gap-4 sm:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i} className={cn("animate-fade-in-up", `stagger-${i + 1}`)}>
-              <CardHeader className="pb-2">
-                <div className="h-4 w-20 rounded skeleton-shimmer" />
-              </CardHeader>
-              <CardContent>
-                <div className="h-7 w-16 rounded skeleton-shimmer" />
-              </CardContent>
-            </Card>
+            <div key={i} className="ops-panel px-4 py-3 space-y-2">
+              <div className="h-3 w-20 rounded skeleton-shimmer" />
+              <div className="h-7 w-16 rounded skeleton-shimmer" />
+            </div>
           ))}
         </div>
         <div>
@@ -65,70 +61,64 @@ export function MechanicDetailPage() {
 
   const statCards = [
     { label: "Status", value: data.status.replace(/_/g, " ") },
-    { label: "Jobs Completed", value: String(data.jobsCompleted) },
+    { label: "Jobs completed", value: String(data.jobsCompleted) },
     { label: "Specialty", value: data.specialty ?? "General" },
   ];
 
   return (
     <div className="space-y-6">
-      <div className="animate-fade-in-up">
-        <h1 className="text-2xl font-semibold tracking-tight">{data.name}</h1>
-        <p className="text-sm text-muted-foreground">{data.email}</p>
+      <div>
+        <h1 className="text-section font-semibold tracking-tight">{data.name}</h1>
+        <p className="text-body text-muted-foreground">{data.email}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        {statCards.map((stat, i) => (
-          <Card
-            key={stat.label}
-            className={cn("card-interactive animate-fade-in-up", `stagger-${i + 1}`)}
-          >
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-muted-foreground">{stat.label}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-lg font-semibold">{stat.value}</p>
-            </CardContent>
-          </Card>
+        {statCards.map((stat) => (
+          <div key={stat.label} className="ops-panel px-4 py-3">
+            <p className="text-meta">{stat.label}</p>
+            <p className="mt-1 font-mono text-section font-semibold tabular-nums">
+              {stat.value}
+            </p>
+          </div>
         ))}
       </div>
 
-      <section className="animate-fade-in-up stagger-4">
-        <h2 className="mb-4 text-lg font-semibold">Recent Bookings</h2>
+      <section>
+        <h2 className="mb-4 text-body font-semibold">Recent bookings</h2>
         {data.bookings.length === 0 ? (
           <EmptyState
             title="No bookings yet"
             description="This mechanic hasn't been assigned any jobs."
           />
         ) : (
-          <div className="overflow-hidden rounded-lg border border-border">
-            <table className="w-full text-sm">
-              <thead className="border-b border-border bg-muted/50">
+          <div className="ops-panel overflow-hidden">
+            <table className="ops-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium">Customer</th>
-                  <th className="px-4 py-3 text-left font-medium">Service</th>
-                  <th className="px-4 py-3 text-left font-medium">Status</th>
-                  <th className="px-4 py-3 text-left font-medium">Amount</th>
-                  <th className="px-4 py-3 text-left font-medium">Scheduled</th>
+                  <th>Customer</th>
+                  <th>Service</th>
+                  <th>Status</th>
+                  <th className="num">Amount</th>
+                  <th>Scheduled</th>
                 </tr>
               </thead>
               <tbody>
-                {data.bookings.map((b, i) => (
-                  <tr
-                    key={b.id}
-                    className="border-b border-border transition-colors hover:bg-muted/30 animate-fade-in"
-                    style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
-                  >
-                    <td className="px-4 py-3">
-                      <Link to={`/bookings/${b.id}`} className="text-primary hover:underline">
+                {data.bookings.map((b) => (
+                  <tr key={b.id}>
+                    <td>
+                      <Link
+                        to={paths.booking(b.id)}
+                        className="font-medium text-foreground underline-offset-4 hover:underline"
+                      >
                         {b.customer.user.name}
                       </Link>
                     </td>
-                    <td className="px-4 py-3">{b.serviceCategory.name}</td>
-                    <td className="px-4 py-3">
+                    <td>{b.serviceCategory.name}</td>
+                    <td>
                       <StatusBadge status={b.status} />
                     </td>
-                    <td className="px-4 py-3 tabular-nums">{formatCurrency(b.amount)}</td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                    <td className="num">{formatCurrency(b.amount)}</td>
+                    <td className="text-muted-foreground">
                       {formatDate(b.scheduledAt)}
                     </td>
                   </tr>

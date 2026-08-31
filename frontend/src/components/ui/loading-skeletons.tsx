@@ -1,20 +1,14 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export function StatGridSkeleton({ count = 8 }: { count?: number }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {Array.from({ length: count }).map((_, i) => (
-        <Card key={i} className={cn("animate-fade-in-up", `stagger-${Math.min(i + 1, 8)}`)}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-4 w-4 rounded-full" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-8 w-20" />
-          </CardContent>
-        </Card>
+        <div key={i} className="ops-panel px-4 py-3 space-y-2">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-8 w-20" />
+        </div>
       ))}
     </div>
   );
@@ -28,7 +22,7 @@ export function TableSkeleton({
   columns?: number;
 }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border animate-fade-in">
+    <div className="overflow-hidden rounded-[12px] border border-border">
       <div className="border-b border-border bg-muted/40 px-4 py-3">
         <div className="flex gap-4">
           {Array.from({ length: columns }).map((_, i) => (
@@ -54,14 +48,10 @@ export function TableSkeleton({
 
 export function ChartSkeleton({ className }: { className?: string }) {
   return (
-    <Card className={cn("animate-fade-in-up", className)}>
-      <CardHeader>
-        <Skeleton className="h-5 w-40" />
-      </CardHeader>
-      <CardContent>
-        <Skeleton className="h-[280px] w-full rounded-lg" />
-      </CardContent>
-    </Card>
+    <div className={cn("ops-panel p-5", className)}>
+      <Skeleton className="h-5 w-40" />
+      <Skeleton className="mt-4 h-[280px] w-full rounded-[8px]" />
+    </div>
   );
 }
 
@@ -69,16 +59,12 @@ export function DetailCardsSkeleton({ count = 4 }: { count?: number }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {Array.from({ length: count }).map((_, i) => (
-        <Card key={i} className={cn("animate-fade-in-up", `stagger-${Math.min(i + 1, 4)}`)}>
-          <CardHeader>
-            <Skeleton className="h-5 w-28" />
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-          </CardContent>
-        </Card>
+        <div key={i} className="ops-panel p-5 space-y-3">
+          <Skeleton className="h-5 w-28" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-1/2" />
+        </div>
       ))}
     </div>
   );
@@ -86,7 +72,7 @@ export function DetailCardsSkeleton({ count = 4 }: { count?: number }) {
 
 export function PageHeaderSkeleton() {
   return (
-    <div className="space-y-2 animate-fade-in">
+    <div className="space-y-2">
       <Skeleton className="h-8 w-48" />
       <Skeleton className="h-4 w-72" />
     </div>

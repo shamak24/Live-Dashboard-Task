@@ -5,17 +5,14 @@ import {
   generatePostVisitSummary,
   generatePreVisitSummary,
 } from "../services/llmService.js";
+import { MECHANIC_ACTIVE_BOOKING_STATUSES } from "../services/mechanicService.js";
 
 const TRANSACTION_OPTIONS = {
   maxWait: 10_000,
   timeout: 15_000,
 };
 
-const ACTIVE_STATUSES: BookingStatus[] = [
-  BookingStatus.ASSIGNED,
-  BookingStatus.MECHANIC_ON_THE_WAY,
-  BookingStatus.IN_PROGRESS,
-];
+const ACTIVE_STATUSES = MECHANIC_ACTIVE_BOOKING_STATUSES;
 
 const STATUS_FLOW: Record<BookingStatus, BookingStatus[]> = {
   PENDING: [BookingStatus.ASSIGNED, BookingStatus.CANCELLED],
@@ -170,10 +167,13 @@ async function assignMechanicWithLock(
     await prisma.$transaction(async (tx) => {
       const mechanic = await tx.mechanic.findUnique({
         where: { id: mechanicId },
-        select: { id: true },
+        select: { id: true, status: true },
       });
       if (!mechanic) {
         throw createError("Mechanic not found", 404);
+      }
+      if (mechanic.status === MechanicStatus.OFFLINE) {
+        throw createError("Mechanic is offline and cannot be assigned", 400);
       }
 
       const activeBooking = await tx.booking.findFirst({
@@ -312,6 +312,21 @@ export async function updateBookingStatus(
               jobsCompleted: { increment: 1 },
             },
           });
+        } else if (newStatus === BookingStatus.CANCELLED) {
+          const otherActive = await tx.booking.findFirst({
+            where: {
+              mechanicId: current.mechanicId,
+              status: { in: ACTIVE_STATUSES },
+              id: { not: bookingId },
+            },
+            select: { id: true },
+          });
+          if (!otherActive) {
+            await tx.mechanic.update({
+              where: { id: current.mechanicId },
+              data: { status: MechanicStatus.AVAILABLE },
+            });
+          }
         } else if (ACTIVE_STATUSES.includes(newStatus)) {
           await tx.mechanic.update({
             where: { id: current.mechanicId },

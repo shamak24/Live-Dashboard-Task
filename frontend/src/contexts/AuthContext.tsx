@@ -8,10 +8,19 @@ import {
 import { api } from "@/lib/api";
 import type { User } from "@/types";
 
+interface RegisterInput {
+  name: string;
+  email: string;
+  password: string;
+  role: "CUSTOMER" | "MECHANIC";
+  specialty?: string;
+}
+
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
+  register: (input: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -35,6 +44,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
     });
     setUser(data.user);
+    return data.user;
+  };
+
+  const register = async (input: RegisterInput) => {
+    const data = await api.post<{ user: User }>("/api/auth/register", {
+      name: input.name,
+      email: input.email,
+      password: input.password,
+      role: input.role,
+      specialty: input.specialty,
+    });
+    setUser(data.user);
   };
 
   const logout = async () => {
@@ -43,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

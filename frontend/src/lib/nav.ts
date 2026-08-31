@@ -8,6 +8,7 @@ import {
   CalendarPlus,
 } from "lucide-react";
 import type { User } from "@/types";
+import { paths } from "@/lib/paths";
 
 export interface NavItem {
   to: string;
@@ -19,26 +20,26 @@ export interface NavItem {
 export function getNavItems(role: User["role"]): NavItem[] {
   if (role === "ADMIN") {
     return [
-      { to: "/", label: "Overview", icon: LayoutDashboard, end: true },
-      { to: "/analytics", label: "Analytics", icon: BarChart3 },
-      { to: "/bookings", label: "Bookings", icon: Calendar },
-      { to: "/mechanics", label: "Mechanics", icon: Wrench },
-      { to: "/customers", label: "Customers", icon: Users },
+      { to: paths.home, label: "Overview", icon: LayoutDashboard, end: true },
+      { to: paths.analytics, label: "Analytics", icon: BarChart3 },
+      { to: paths.bookings, label: "Bookings", icon: Calendar },
+      { to: paths.mechanics, label: "Mechanics", icon: Wrench },
+      { to: paths.customers, label: "Customers", icon: Users },
     ];
   }
 
   if (role === "MECHANIC") {
     return [
-      { to: "/", label: "My Jobs", icon: LayoutDashboard, end: true },
-      { to: "/bookings", label: "All Assignments", icon: Calendar },
+      { to: paths.home, label: "My Jobs", icon: LayoutDashboard, end: true },
+      { to: paths.bookings, label: "All Assignments", icon: Calendar },
     ];
   }
 
   return [
-    { to: "/", label: "My Bookings", icon: Calendar, end: true },
-    { to: "/bookings/new", label: "Book Service", icon: CalendarPlus },
-    { to: "/bookings", label: "Booking History", icon: LayoutDashboard },
+    { to: paths.home, label: "My Bookings", icon: Calendar, end: true },
+    { to: paths.bookingsNew, label: "Book Service", icon: CalendarPlus },
+    { to: paths.bookings, label: "Booking History", icon: LayoutDashboard },
   ];
 }
 
-export const ADMIN_ONLY_PATHS = ["/analytics", "/mechanics", "/customers"];
+export const ADMIN_ONLY_PATHS = [paths.analytics, paths.mechanics, paths.customers];

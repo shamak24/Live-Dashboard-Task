@@ -1,16 +1,25 @@
 import { Router } from "express";
-import { BookingStatus, MechanicStatus, Prisma } from "@prisma/client";
+import { MechanicStatus, Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { authenticate, requireRoles, type AuthRequest } from "../middleware/auth.js";
 import { createError } from "../middleware/errorHandler.js";
+import {
+  getEffectiveMechanicStatus,
+  MECHANIC_ACTIVE_BOOKING_STATUSES,
+  syncMechanicStatus,
+} from "../services/mechanicService.js";
 
 const router = Router();
 
-const ACTIVE_STATUSES = [
-  BookingStatus.ASSIGNED,
-  BookingStatus.MECHANIC_ON_THE_WAY,
-  BookingStatus.IN_PROGRESS,
-];
+const ACTIVE_STATUSES = MECHANIC_ACTIVE_BOOKING_STATUSES;
+
+/** Mechanics that can receive a new assignment (matches assignMechanicWithLock rules). */
+const ASSIGNABLE_MECHANIC_WHERE: Prisma.MechanicWhereInput = {
+  status: { not: MechanicStatus.OFFLINE },
+  bookings: {
+    none: { status: { in: ACTIVE_STATUSES } },
+  },
+};
 
 /**
  * @openapi
@@ -28,12 +37,7 @@ router.get(
       const availableOnly = req.query.available === "true";
 
       const where: Prisma.MechanicWhereInput = availableOnly
-        ? {
-            status: MechanicStatus.AVAILABLE,
-            bookings: {
-              none: { status: { in: ACTIVE_STATUSES } },
-            },
-          }
+        ? ASSIGNABLE_MECHANIC_WHERE
         : {};
 
       const mechanics = await prisma.mechanic.findMany({
@@ -57,6 +61,16 @@ router.get(
 
       const result = await Promise.all(
         mechanics.map(async (m) => {
+          const hasActiveBooking = m.bookings.length > 0;
+          const effectiveStatus = getEffectiveMechanicStatus(m.status, hasActiveBooking);
+
+          if (
+            m.status !== MechanicStatus.OFFLINE &&
+            m.status !== effectiveStatus
+          ) {
+            syncMechanicStatus(m.id).catch(() => {});
+          }
+
           const lastBooking = await prisma.booking.findFirst({
             where: { mechanicId: m.id },
             orderBy: { scheduledAt: "desc" },
@@ -72,7 +86,7 @@ router.get(
             id: m.id,
             name: m.user.name,
             email: m.user.email,
-            status: m.status,
+            status: effectiveStatus,
             jobsCompleted: m.jobsCompleted,
             specialty: m.specialty,
             currentBooking: m.bookings[0]
@@ -122,6 +136,25 @@ router.get(
 
       if (!mechanic) throw createError("Mechanic not found", 404);
 
+      const activeBooking = await prisma.booking.findFirst({
+        where: {
+          mechanicId: mechanic.id,
+          status: { in: ACTIVE_STATUSES },
+        },
+        select: { id: true },
+      });
+      const effectiveStatus = getEffectiveMechanicStatus(
+        mechanic.status,
+        !!activeBooking
+      );
+
+      if (
+        mechanic.status !== MechanicStatus.OFFLINE &&
+        mechanic.status !== effectiveStatus
+      ) {
+        syncMechanicStatus(mechanic.id).catch(() => {});
+      }
+
       if (req.user!.role === "MECHANIC") {
         const own = await prisma.mechanic.findUnique({
           where: { userId: req.user!.userId },
@@ -135,7 +168,7 @@ router.get(
         id: mechanic.id,
         name: mechanic.user.name,
         email: mechanic.user.email,
-        status: mechanic.status,
+        status: effectiveStatus,
         jobsCompleted: mechanic.jobsCompleted,
         specialty: mechanic.specialty,
         bookings: mechanic.bookings.map((b) => ({

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import { paths } from "@/lib/paths";
 import { api } from "@/lib/api";
 import type { MechanicListItem } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -29,7 +30,7 @@ export function MechanicsPage() {
         action={isFetching && !isLoading ? <InlineLoader /> : undefined}
       />
 
-      <section className="animate-fade-in-up stagger-1">
+      <section>
         {isLoading ? (
           <TableSkeleton rows={8} columns={5} />
         ) : isError ? (
@@ -37,48 +38,44 @@ export function MechanicsPage() {
         ) : (
           <div
             className={cn(
-              "overflow-hidden rounded-lg border border-border transition-opacity duration-300",
+              "ops-panel overflow-hidden",
               isFetching && "opacity-70"
             )}
           >
-            <table className="w-full text-sm">
-              <thead className="border-b border-border bg-muted/50">
+            <table className="ops-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium">Name</th>
-                  <th className="px-4 py-3 text-left font-medium">Status</th>
-                  <th className="px-4 py-3 text-left font-medium">Jobs Completed</th>
-                  <th className="px-4 py-3 text-left font-medium">Specialty</th>
-                  <th className="px-4 py-3 text-left font-medium">Current Booking</th>
+                  <th>Name</th>
+                  <th>Status</th>
+                  <th className="num">Jobs completed</th>
+                  <th>Specialty</th>
+                  <th>Current booking</th>
                 </tr>
               </thead>
               <tbody>
-                {data?.data.map((m, i) => (
-                  <tr
-                    key={m.id}
-                    className="border-b border-border transition-colors hover:bg-muted/30 animate-fade-in"
-                    style={{ animationDelay: `${Math.min(i * 40, 400)}ms` }}
-                  >
-                    <td className="px-4 py-3">
+                {data?.data.map((m) => (
+                  <tr key={m.id}>
+                    <td>
                       <Link
-                        to={`/mechanics/${m.id}`}
-                        className="font-medium text-primary transition-colors hover:underline"
+                        to={paths.mechanic(m.id)}
+                        className="font-medium text-foreground underline-offset-4 hover:underline"
                       >
                         {m.name}
                       </Link>
                     </td>
-                    <td className="px-4 py-3">
+                    <td>
                       <span
                         className={cn(
-                          "inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium",
+                          "inline-flex rounded-[8px] px-2.5 py-0.5 text-meta font-medium",
                           MECHANIC_STATUS_COLORS[m.status] ?? ""
                         )}
                       >
                         {m.status.replace(/_/g, " ")}
                       </span>
                     </td>
-                    <td className="px-4 py-3 tabular-nums">{m.jobsCompleted}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{m.specialty ?? "—"}</td>
-                    <td className="px-4 py-3">
+                    <td className="num">{m.jobsCompleted}</td>
+                    <td className="text-muted-foreground">{m.specialty ?? "—"}</td>
+                    <td>
                       {m.currentBooking ? (
                         <div className="flex items-center gap-2">
                           <StatusBadge status={m.currentBooking.status} />

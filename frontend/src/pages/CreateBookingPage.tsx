@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { paths } from "@/lib/paths";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -8,8 +9,7 @@ import type { CustomerProfile, ServiceCategory, Booking } from "@/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ErrorState, Spinner } from "@/components/ui/section-states";
+import { ErrorState } from "@/components/ui/section-states";
 import { StatGridSkeleton } from "@/components/ui/loading-skeletons";
 
 function defaultScheduledAt() {
@@ -49,7 +49,7 @@ export function CreateBookingPage() {
     }) => api.post<Booking>("/api/bookings", body),
     onSuccess: (booking) => {
       toast.success("Booking created — we'll assign a mechanic soon");
-      navigate(`/bookings/${booking.id}`);
+      navigate(paths.booking(booking.id));
     },
     onError: (err: Error) => {
       toast.error(err.message || "Failed to create booking");
@@ -113,18 +113,13 @@ export function CreateBookingPage() {
       />
 
       {vehicles.length === 0 ? (
-        <Card className="animate-fade-in-up">
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            No vehicles on your account. Contact support to add a vehicle before booking.
-          </CardContent>
-        </Card>
+        <div className="ops-panel py-8 text-center text-body text-muted-foreground">
+          No vehicles on your account. Contact support to add a vehicle before booking.
+        </div>
       ) : (
-        <Card className="animate-fade-in-up stagger-1 max-w-xl">
-          <CardHeader>
-            <CardTitle className="text-base">Service details</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="ops-panel max-w-xl p-5">
+          <h2 className="text-body font-semibold">Service details</h2>
+          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium" htmlFor="vehicle">
                   Vehicle
@@ -193,28 +188,24 @@ export function CreateBookingPage() {
               )}
 
               <div className="flex gap-3 pt-2">
-                <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? (
-                    <>
-                      <Spinner size="sm" />
-                      Booking...
-                    </>
-                  ) : (
-                    "Confirm booking"
-                  )}
+                <Button
+                  type="submit"
+                  loading={createMutation.isPending}
+                  loadingText="Booking..."
+                >
+                  Confirm booking
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => navigate("/")}
+                  onClick={() => navigate(paths.home)}
                   disabled={createMutation.isPending}
                 >
                   Cancel
                 </Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
+        </div>
       )}
     </div>
   );

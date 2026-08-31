@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
+import { paths } from "@/lib/paths";
 import { useQuery } from "@tanstack/react-query";
-import { Wrench, Clock, CheckCircle, Calendar } from "lucide-react";
 import { api } from "@/lib/api";
 import { PageHeader, StatCard } from "@/components/PageHeader";
 import { StatGridSkeleton } from "@/components/ui/loading-skeletons";
@@ -8,7 +8,6 @@ import { ErrorState } from "@/components/ui/section-states";
 import type { PaginatedBookings } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const ACTIVE = ["ASSIGNED", "MECHANIC_ON_THE_WAY", "IN_PROGRESS"];
 
@@ -51,40 +50,39 @@ export function MechanicHomePage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Active now" value={String(active.length)} icon={Wrench} index={0} />
-        <StatCard label="Upcoming" value={String(upcoming.length)} icon={Clock} index={1} />
-        <StatCard label="Completed" value={String(completed.length)} icon={CheckCircle} index={2} />
+        <StatCard label="Active now" value={String(active.length)} variant="compact" />
+        <StatCard label="Upcoming" value={String(upcoming.length)} variant="compact" />
+        <StatCard label="Completed" value={String(completed.length)} variant="compact" />
       </div>
 
-      <Card className="animate-fade-in-up stagger-4">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            Active & upcoming assignments
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      <div className="ops-panel">
+        <div className="border-b border-border px-4 py-3">
+          <h2 className="text-body font-semibold">Active and upcoming assignments</h2>
+        </div>
+        <div className="space-y-0 p-2">
           {active.length === 0 && upcoming.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No active jobs right now.</p>
+            <p className="px-3 py-4 text-body text-muted-foreground">
+              No active jobs right now.
+            </p>
           ) : (
             [...active, ...upcoming].slice(0, 8).map((b) => (
               <Link
                 key={b.id}
-                to={`/bookings/${b.id}`}
-                className="flex items-center justify-between rounded-md border border-border p-3 transition-colors hover:bg-muted/40"
+                to={paths.booking(b.id)}
+                className="flex items-center justify-between rounded-[8px] border border-border p-3 transition-colors hover:bg-accent"
               >
                 <div>
-                  <p className="font-medium">{b.customer.user.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {b.serviceCategory.name} · {formatDate(b.scheduledAt)}
+                  <p className="text-body font-medium">{b.customer.user.name}</p>
+                  <p className="text-meta">
+                    {b.serviceCategory.name}, {formatDate(b.scheduledAt)}
                   </p>
                 </div>
                 <StatusBadge status={b.status} />
               </Link>
             ))
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

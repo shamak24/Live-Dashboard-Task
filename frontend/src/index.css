@@ -3,35 +3,48 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-background: oklch(0.985 0 0);
-  --color-foreground: oklch(0.145 0 0);
-  --color-card: oklch(1 0 0);
-  --color-card-foreground: oklch(0.145 0 0);
-  --color-primary: oklch(0.55 0.2 255);
-  --color-primary-foreground: oklch(0.985 0 0);
-  --color-muted: oklch(0.96 0 0);
-  --color-muted-foreground: oklch(0.45 0 0);
-  --color-border: oklch(0.9 0 0);
-  --color-accent: oklch(0.96 0 0);
-  --color-accent-foreground: oklch(0.145 0 0);
-  --color-destructive: oklch(0.55 0.22 25);
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
+  --font-sans: "Geist Sans", Inter, system-ui, sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+
+  /* Light mode — prompt tokens */
+  --color-background: #f4f5f7;
+  --color-foreground: #14161a;
+  --color-card: #ffffff;
+  --color-card-foreground: #14161a;
+  --color-primary: #2f5dff;
+  --color-primary-foreground: #ffffff;
+  --color-muted: #e2e4e9;
+  --color-muted-foreground: #5b5f6b;
+  --color-border: #e2e4e9;
+  --color-accent: #e8eaee;
+  --color-accent-foreground: #14161a;
+  --color-destructive: #e5484d;
+
+  /* Status system — identical in light/dark */
+  --status-pending: #9ba0ac;
+  --status-assigned: #2f5dff;
+  --status-enroute: #e08a2f;
+  --status-progress: #8a5cf6;
+  --status-completed: #1fa971;
+  --status-cancelled: #e5484d;
+
+  --radius-sm: 8px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
 }
 
 .dark {
-  --color-background: oklch(0.145 0 0);
-  --color-foreground: oklch(0.985 0 0);
-  --color-card: oklch(0.18 0 0);
-  --color-card-foreground: oklch(0.985 0 0);
-  --color-primary: oklch(0.65 0.2 255);
-  --color-primary-foreground: oklch(0.985 0 0);
-  --color-muted: oklch(0.25 0 0);
-  --color-muted-foreground: oklch(0.65 0 0);
-  --color-border: oklch(0.28 0 0);
-  --color-accent: oklch(0.25 0 0);
-  --color-accent-foreground: oklch(0.985 0 0);
+  --color-background: #0e1014;
+  --color-foreground: #f2f3f5;
+  --color-card: #16181d;
+  --color-card-foreground: #f2f3f5;
+  --color-primary: #5b7fff;
+  --color-primary-foreground: #ffffff;
+  --color-muted: #262a32;
+  --color-muted-foreground: #9ba0ac;
+  --color-border: #262a32;
+  --color-accent: #262a32;
+  --color-accent-foreground: #f2f3f5;
 }
 
 * {
@@ -41,13 +54,42 @@
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
+  font-size: 16px;
   -webkit-font-smoothing: antialiased;
 }
 
+.marketing-surface {
+  background-color: var(--color-background);
+}
+
+.font-mono,
+.tabular-nums {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.text-meta {
+  font-size: 12px;
+  color: var(--color-muted-foreground);
+}
+
+.text-body {
+  font-size: 14px;
+}
+
+.text-section {
+  font-size: 20px;
+  font-weight: 600;
+}
+
 @keyframes flash-update {
-  0% { background-color: oklch(0.75 0.15 255 / 0.35); }
-  100% { background-color: transparent; }
+  0% {
+    background-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
 }
 
 @keyframes shimmer {
@@ -55,109 +97,103 @@ body {
   100% { background-position: -200% 0; }
 }
 
-@keyframes fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes scale-in {
-  from {
-    opacity: 0;
-    transform: scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
 @keyframes pulse-live {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.55; transform: scale(0.92); }
-}
-
-@keyframes spin-slow {
-  to { transform: rotate(360deg); }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
 .animate-flash-update {
   animation: flash-update 1.5s ease-out;
 }
 
-.animate-fade-in-up {
-  animation: fade-in-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.animate-fade-in {
-  animation: fade-in 0.4s ease-out both;
-}
-
-.animate-scale-in {
-  animation: scale-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
 .animate-pulse-live {
   animation: pulse-live 2s ease-in-out infinite;
 }
-
-.stagger-1 { animation-delay: 60ms; }
-.stagger-2 { animation-delay: 120ms; }
-.stagger-3 { animation-delay: 180ms; }
-.stagger-4 { animation-delay: 240ms; }
-.stagger-5 { animation-delay: 300ms; }
-.stagger-6 { animation-delay: 360ms; }
-.stagger-7 { animation-delay: 420ms; }
-.stagger-8 { animation-delay: 480ms; }
 
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,
     var(--color-muted) 0%,
-    oklch(0.94 0 0) 45%,
+    color-mix(in srgb, var(--color-muted) 60%, white) 45%,
     var(--color-muted) 90%
   );
   background-size: 200% 100%;
   animation: shimmer 1.6s ease-in-out infinite;
 }
 
-.dark .skeleton-shimmer {
-  background: linear-gradient(
-    90deg,
-    var(--color-muted) 0%,
-    oklch(0.32 0 0) 45%,
-    var(--color-muted) 90%
+.ops-table {
+  width: 100%;
+  font-size: 14px;
+  border-collapse: collapse;
+}
+
+.ops-table thead {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ops-table th {
+  padding: 8px 16px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-muted-foreground);
+}
+
+.ops-table td {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.ops-table tbody tr:hover {
+  background: color-mix(in srgb, var(--color-muted) 35%, transparent);
+}
+
+.ops-table .num {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.ops-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-card);
+}
+
+.ops-panel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-card);
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Landing page */
+.landing-hero-grid {
+  background-color: var(--color-background);
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-border) 70%, transparent) 1px,
+    transparent 1px
   );
-  background-size: 200% 100%;
+  background-size: 22px 22px;
 }
 
-.card-interactive {
-  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
-}
-
-.card-interactive:hover {
-  box-shadow: 0 4px 24px oklch(0.55 0.2 255 / 0.08);
-  border-color: oklch(0.55 0.2 255 / 0.25);
-}
-
-.dark .card-interactive:hover {
-  box-shadow: 0 4px 24px oklch(0.65 0.2 255 / 0.12);
+.landing-display {
+  font-size: clamp(2.5rem, 5vw + 1rem, 4.5rem);
+  line-height: 1.05;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-fade-in-up,
-  .animate-fade-in,
-  .animate-scale-in,
   .animate-flash-update,
   .animate-pulse-live,
   .skeleton-shimmer {

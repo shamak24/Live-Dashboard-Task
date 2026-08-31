@@ -1,4 +1,3 @@
-import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function PageHeader({
@@ -15,14 +14,16 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "animate-fade-in-up flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between",
+        "flex flex-col gap-3 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between",
         className
       )}
     >
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        <h1 className="text-section font-semibold tracking-tight md:text-[20px]">
+          {title}
+        </h1>
         {description && (
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          <p className="mt-1 text-body text-muted-foreground">{description}</p>
         )}
       </div>
       {action && <div className="shrink-0">{action}</div>}
@@ -33,28 +34,38 @@ export function PageHeader({
 export function StatCard({
   label,
   value,
-  icon: Icon,
-  index = 0,
+  variant = "default",
 }: {
   label: string;
   value: string;
-  icon: LucideIcon;
-  index?: number;
+  variant?: "default" | "hero" | "compact";
 }) {
+  if (variant === "hero") {
+    return (
+      <div className="ops-panel px-5 py-4">
+        <p className="text-meta">{label}</p>
+        <p className="mt-2 font-mono text-[36px] font-semibold tabular-nums leading-none text-foreground">
+          {value}
+        </p>
+      </div>
+    );
+  }
+
+  if (variant === "compact") {
+    return (
+      <div className="ops-panel px-4 py-3">
+        <p className="text-meta">{label}</p>
+        <p className="mt-1 font-mono text-[28px] font-semibold tabular-nums leading-tight">
+          {value}
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={cn(
-        "card-interactive animate-fade-in-up rounded-lg border border-border bg-card text-card-foreground shadow-sm",
-        `stagger-${Math.min(index + 1, 8)}`
-      )}
-    >
-      <div className="flex flex-row items-center justify-between p-6 pb-2">
-        <p className="text-sm font-medium text-muted-foreground">{label}</p>
-        <Icon className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
-      </div>
-      <div className="p-6 pt-0">
-        <p className="text-2xl font-bold tracking-tight tabular-nums">{value}</p>
-      </div>
+    <div className="ops-panel px-4 py-3">
+      <p className="text-meta">{label}</p>
+      <p className="mt-1 font-mono text-[28px] font-semibold tabular-nums">{value}</p>
     </div>
   );
 }

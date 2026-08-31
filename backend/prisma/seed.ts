@@ -91,11 +91,7 @@ async function main() {
         role: Role.MECHANIC,
         mechanic: {
           create: {
-            status: faker.helpers.arrayElement([
-              MechanicStatus.AVAILABLE,
-              MechanicStatus.ON_JOB,
-              MechanicStatus.OFFLINE,
-            ]),
+            status: MechanicStatus.AVAILABLE,
             jobsCompleted: faker.number.int({ min: 10, max: 200 }),
             specialty: faker.helpers.arrayElement(
               SERVICE_CATEGORIES.map((c) => c.name)
@@ -249,6 +245,20 @@ async function main() {
       },
     });
   }
+
+  // Mark a few mechanics offline (no active jobs) and sync ON_JOB from active bookings
+  const offlineMechanics = faker.helpers.arrayElements(mechanics, 3);
+  for (const m of offlineMechanics) {
+    await prisma.mechanic.update({
+      where: { id: m.id },
+      data: { status: MechanicStatus.OFFLINE },
+    });
+  }
+
+  const { syncAllMechanicStatuses } = await import(
+    "../src/services/mechanicService.js"
+  );
+  await syncAllMechanicStatuses();
 
   console.log(`✅ Seeded:
   - ${categories.length} service categories

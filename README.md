@@ -7,7 +7,7 @@ A full-stack monorepo for **Instant Mechanic**, a vehicle service company's live
 This project delivers a production-quality SaaS-style dashboard for monitoring vehicle service operations in real time. The primary user is the **ADMIN/OPS** team, who can view aggregated stats, search and filter bookings, track mechanic availability, analyze trends, and watch booking statuses update live via WebSockets.
 
 The monorepo contains:
-- **`frontend/`** — React + Vite SPA deployed to Vercel
+- **`frontend/`** — React + Vite SPA (landing page at `/`, dashboard at `/app`) deployed to Vercel
 - **`backend/`** — Express REST API + Socket.IO deployed to Render
 - PostgreSQL database hosted on Neon (production) or Docker (local)
 
@@ -110,10 +110,40 @@ Or both:
 bun run dev
 ```
 
-### 6. Login
+### 6. Open the app
 
-- **Email:** `admin@instantmechanic.com`
-- **Password:** `password123`
+| URL | Purpose |
+|-----|---------|
+| http://localhost:5173 | Public landing page |
+| http://localhost:5173/login | Sign in (all roles) |
+| http://localhost:5173/signup | Customer / mechanic registration |
+| http://localhost:5173/app | Operations dashboard (after login) |
+
+## Demo accounts & login credentials
+
+Run `bun run db:seed` in `backend/` before using these accounts.
+
+### Admin (operations dashboard)
+
+Use this account to access the full ops console: Overview, Analytics, Bookings, Mechanics, Customers, and live simulation.
+
+| Field | Value |
+|-------|-------|
+| **Username (email)** | `admin@instantmechanic.com` |
+| **Password** | `password123` |
+
+Admin accounts are **seeded only** — use **Admin** on the sign-in page (`/login`). After sign-in, admins are routed to `/app` (operations dashboard).
+
+### Customer & mechanic
+
+- **Sign up:** http://localhost:5173/signup — choose “I'm a customer” or “I'm a mechanic”.
+- **Sign in:** http://localhost:5173/login — use the **Customer / Mechanic** tab.
+- **Seeded users:** Any customer or mechanic email created by the seed script works with password **`password123`** (emails are random Faker addresses; only the admin email is fixed).
+
+### Admin sign-in
+
+- http://localhost:5173/login — select the **Admin** tab, or open http://localhost:5173/login?mode=admin directly.
+
 
 ## Environment Variables
 

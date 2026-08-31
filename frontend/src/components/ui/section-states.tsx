@@ -58,11 +58,11 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <div className="animate-fade-in rounded-lg border border-destructive/30 bg-destructive/5 p-8 text-center">
-      <AlertCircle className="mx-auto h-10 w-10 text-destructive/80" />
-      <p className="mt-3 font-medium text-destructive">{title}</p>
+    <div className="rounded-[12px] border border-border bg-card p-8 text-center">
+      <AlertCircle className="mx-auto h-10 w-10 text-muted-foreground" />
+      <p className="mt-3 font-medium text-foreground">{title}</p>
       {message && (
-        <p className="mt-1 text-sm text-muted-foreground">{message}</p>
+        <p className="mt-1 text-body text-muted-foreground">{message}</p>
       )}
       {onRetry && (
         <Button variant="outline" size="sm" className="mt-4" onClick={onRetry}>

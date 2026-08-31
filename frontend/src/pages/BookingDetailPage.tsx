@@ -1,19 +1,18 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw, ArrowRight } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { formatCurrency, formatDate, cn } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Booking, MechanicListItem } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   DetailCardsSkeleton,
   PageHeaderSkeleton,
 } from "@/components/ui/loading-skeletons";
-import { ErrorState, Spinner } from "@/components/ui/section-states";
+import { ErrorState } from "@/components/ui/section-states";
 import { useAuth } from "@/contexts/AuthContext";
 import { getNextStatuses, formatStatusLabel } from "@/lib/bookingStatus";
 
@@ -33,10 +32,15 @@ export function BookingDetailPage() {
   });
 
   const { data: mechanicsData } = useQuery({
-    queryKey: ["mechanics-available"],
+    queryKey: ["mechanics-available", id],
     queryFn: () =>
       api.get<{ data: MechanicListItem[] }>("/api/mechanics?available=true"),
-    enabled: isAdmin && !!booking && booking.status === "PENDING" && !booking.mechanic,
+    enabled:
+      isAdmin &&
+      !!booking &&
+      booking.status === "PENDING" &&
+      !booking.mechanic,
+    staleTime: 0,
   });
 
   const statusMutation = useMutation({
@@ -92,21 +96,17 @@ export function BookingDetailPage() {
       <div className="space-y-6">
         <PageHeaderSkeleton />
         <DetailCardsSkeleton count={4} />
-        <div className="grid gap-4 md:grid-cols-1">
-          <Card className="animate-fade-in-up stagger-5">
-            <CardHeader><CardTitle className="text-base">Pre-Visit Summary</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              <div className="h-4 w-full rounded bg-muted skeleton-shimmer" />
-              <div className="h-4 w-4/5 rounded bg-muted skeleton-shimmer" />
-            </CardContent>
-          </Card>
-          <Card className="animate-fade-in-up stagger-6">
-            <CardHeader><CardTitle className="text-base">Post-Visit Summary</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              <div className="h-4 w-full rounded bg-muted skeleton-shimmer" />
-              <div className="h-4 w-3/4 rounded bg-muted skeleton-shimmer" />
-            </CardContent>
-          </Card>
+        <div className="space-y-4">
+          <div className="ops-panel p-5 space-y-2">
+            <div className="h-5 w-40 rounded skeleton-shimmer" />
+            <div className="h-4 w-full rounded skeleton-shimmer" />
+            <div className="h-4 w-4/5 rounded skeleton-shimmer" />
+          </div>
+          <div className="ops-panel p-5 space-y-2">
+            <div className="h-5 w-40 rounded skeleton-shimmer" />
+            <div className="h-4 w-full rounded skeleton-shimmer" />
+            <div className="h-4 w-3/4 rounded skeleton-shimmer" />
+          </div>
         </div>
       </div>
     );
@@ -135,7 +135,7 @@ export function BookingDetailPage() {
     {
       title: "Customer",
       content: (
-        <div className="space-y-1 text-sm">
+        <div className="space-y-1 text-body">
           <p className="font-medium">{booking.customer.user.name}</p>
           <p className="text-muted-foreground">{booking.customer.user.email}</p>
           {booking.customer.phone && <p>{booking.customer.phone}</p>}
@@ -148,7 +148,7 @@ export function BookingDetailPage() {
     {
       title: "Vehicle",
       content: (
-        <div className="text-sm">
+        <div className="text-body">
           <p className="font-medium">
             {booking.vehicle.year} {booking.vehicle.make} {booking.vehicle.model}
           </p>
@@ -159,161 +159,140 @@ export function BookingDetailPage() {
     {
       title: "Service",
       content: (
-        <div className="text-sm">
+        <div className="text-body">
           <p className="font-medium">{booking.serviceCategory.name}</p>
           <p className="text-muted-foreground">{booking.serviceCategory.description}</p>
-          <p className="mt-2 font-semibold tabular-nums">{formatCurrency(booking.amount)}</p>
+          <p className="mt-2 font-mono font-semibold tabular-nums">
+            {formatCurrency(booking.amount)}
+          </p>
         </div>
       ),
     },
     {
       title: "Mechanic",
       content: booking.mechanic ? (
-        <div className="text-sm">
+        <div className="text-body">
           <p className="font-medium">{booking.mechanic.user.name}</p>
           <p className="text-muted-foreground">{booking.mechanic.specialty}</p>
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">Not assigned</p>
+        <p className="text-body text-muted-foreground">Not assigned</p>
       ),
     },
   ];
 
   return (
     <div className="space-y-6">
-      <div className="animate-fade-in-up">
-        <h1 className="text-2xl font-semibold tracking-tight">
+      <div>
+        <h1 className="font-mono text-section font-semibold tabular-nums tracking-tight">
           Booking #{booking.id.slice(0, 8)}
         </h1>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <StatusBadge status={booking.status} />
-          <span className="text-sm text-muted-foreground">
+          <span className="text-body text-muted-foreground">
             Scheduled {formatDate(booking.scheduledAt)}
           </span>
         </div>
       </div>
 
       {canUpdateStatus && nextStatuses.length > 0 && (
-        <Card className="animate-fade-in-up stagger-1 border-primary/20">
-          <CardHeader>
-            <CardTitle className="text-base">Update status</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {needsMechanicPick && (
-              <div className="space-y-2">
-                <select
-                  className="h-9 w-full max-w-xs rounded-md border border-border bg-card px-3 text-sm"
-                  value={selectedMechanicId}
-                  onChange={(e) => setSelectedMechanicId(e.target.value)}
-                  disabled={availableMechanics.length === 0}
-                >
-                  <option value="">
-                    {availableMechanics.length === 0
-                      ? "No available mechanics"
-                      : "Select mechanic..."}
+        <div className="ops-panel p-5 space-y-3">
+          <h2 className="text-body font-semibold">Update status</h2>
+          {needsMechanicPick && (
+            <div className="space-y-2">
+              <select
+                className="h-9 w-full max-w-xs rounded-[8px] border border-border bg-card px-3 text-body"
+                value={selectedMechanicId}
+                onChange={(e) => setSelectedMechanicId(e.target.value)}
+                disabled={availableMechanics.length === 0}
+              >
+                <option value="">
+                  {availableMechanics.length === 0
+                    ? "No available mechanics"
+                    : "Select mechanic..."}
+                </option>
+                {availableMechanics.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                    {m.specialty ? ` — ${m.specialty}` : ""}
                   </option>
-                  {availableMechanics.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                      {m.specialty ? ` — ${m.specialty}` : ""}
-                    </option>
-                  ))}
-                </select>
-                {availableMechanics.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    All mechanics are currently on a job or offline. Try again later
-                    or complete an active booking first.
-                  </p>
-                )}
-              </div>
-            )}
-            <div className="flex flex-wrap gap-2">
-              {nextStatuses.map((status) => (
-                <Button
-                  key={status}
-                  size="sm"
-                  variant={status === "CANCELLED" ? "outline" : "default"}
-                  disabled={statusMutation.isPending}
-                  onClick={() => handleStatusUpdate(status)}
-                >
-                  {statusMutation.isPending ? (
-                    <Spinner size="sm" />
-                  ) : (
-                    <ArrowRight className="h-4 w-4" />
-                  )}
-                  {formatStatusLabel(status)}
-                </Button>
-              ))}
+                ))}
+              </select>
+              {availableMechanics.length === 0 && (
+                <p className="text-body text-muted-foreground">
+                  All mechanics are currently on a job or offline. Try again later
+                  or complete an active booking first.
+                </p>
+              )}
             </div>
-          </CardContent>
-        </Card>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {nextStatuses.map((status) => (
+              <Button
+                key={status}
+                size="sm"
+                variant={status === "CANCELLED" ? "outline" : "default"}
+                loading={statusMutation.isPending}
+                loadingText="Updating..."
+                onClick={() => handleStatusUpdate(status)}
+              >
+                {formatStatusLabel(status)}
+              </Button>
+            ))}
+          </div>
+        </div>
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
-        {infoCards.map((card, i) => (
-          <Card
-            key={card.title}
-            className={cn("card-interactive animate-fade-in-up", `stagger-${i + 2}`)}
-          >
-            <CardHeader>
-              <CardTitle className="text-base">{card.title}</CardTitle>
-            </CardHeader>
-            <CardContent>{card.content}</CardContent>
-          </Card>
+        {infoCards.map((card) => (
+          <div key={card.title} className="ops-panel p-5">
+            <h3 className="text-body font-semibold">{card.title}</h3>
+            <div className="mt-3">{card.content}</div>
+          </div>
         ))}
       </div>
 
-      <Card className="card-interactive animate-fade-in-up stagger-5">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base">Pre-Visit Summary</CardTitle>
+      <div className="ops-panel p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-body font-semibold">Pre-visit summary</h3>
           {isAdmin && (
             <Button
               variant="ghost"
               size="sm"
-              disabled={retryMutation.isPending}
+              loading={retryMutation.isPending}
+              loadingText="Regenerating..."
               onClick={() => retryMutation.mutate("pre")}
             >
-              {retryMutation.isPending ? (
-                <Spinner size="sm" />
-              ) : (
-                <RefreshCw className="h-4 w-4" />
-              )}
+              <RefreshCw className="h-4 w-4" />
               Retry
             </Button>
           )}
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            {booking.preVisitSummary ?? "No pre-visit summary generated yet."}
-          </p>
-        </CardContent>
-      </Card>
+        </div>
+        <p className="mt-3 text-body leading-relaxed text-muted-foreground">
+          {booking.preVisitSummary ?? "No pre-visit summary generated yet."}
+        </p>
+      </div>
 
-      <Card className="card-interactive animate-fade-in-up stagger-6">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base">Post-Visit Summary</CardTitle>
+      <div className="ops-panel p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-body font-semibold">Post-visit summary</h3>
           {isAdmin && booking.status === "COMPLETED" && (
             <Button
               variant="ghost"
               size="sm"
-              disabled={retryMutation.isPending}
+              loading={retryMutation.isPending}
+              loadingText="Regenerating..."
               onClick={() => retryMutation.mutate("post")}
             >
-              {retryMutation.isPending ? (
-                <Spinner size="sm" />
-              ) : (
-                <RefreshCw className="h-4 w-4" />
-              )}
+              <RefreshCw className="h-4 w-4" />
               Retry
             </Button>
           )}
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            {booking.postVisitSummary ?? "No post-visit summary generated yet."}
-          </p>
-        </CardContent>
-      </Card>
+        </div>
+        <p className="mt-3 text-body leading-relaxed text-muted-foreground">
+          {booking.postVisitSummary ?? "No post-visit summary generated yet."}
+        </p>
+      </div>
     </div>
   );
 }

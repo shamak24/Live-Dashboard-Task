@@ -30,37 +30,33 @@ export function CustomersPage() {
         description="Customer accounts, vehicles, and lifetime value"
       />
 
-      <section className="animate-fade-in-up">
+      <section>
         {isLoading ? (
           <TableSkeleton rows={10} columns={6} />
         ) : isError ? (
           <ErrorState title="Failed to load customers" onRetry={() => refetch()} />
         ) : (
-          <div className="overflow-hidden rounded-lg border border-border">
-            <table className="w-full text-sm">
-              <thead className="border-b border-border bg-muted/50">
+          <div className="ops-panel overflow-hidden">
+            <table className="ops-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium">Name</th>
-                  <th className="px-4 py-3 text-left font-medium">Email</th>
-                  <th className="px-4 py-3 text-left font-medium">Phone</th>
-                  <th className="px-4 py-3 text-left font-medium">Vehicles</th>
-                  <th className="px-4 py-3 text-left font-medium">Bookings</th>
-                  <th className="px-4 py-3 text-left font-medium">Total spent</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th className="num">Vehicles</th>
+                  <th className="num">Bookings</th>
+                  <th className="num">Total spent</th>
                 </tr>
               </thead>
               <tbody>
-                {data?.data.map((c, i) => (
-                  <tr
-                    key={c.id}
-                    className="border-b border-border hover:bg-muted/30 animate-fade-in"
-                    style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
-                  >
-                    <td className="px-4 py-3 font-medium">{c.name}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{c.email}</td>
-                    <td className="px-4 py-3">{c.phone ?? "—"}</td>
-                    <td className="px-4 py-3 tabular-nums">{c.vehicleCount}</td>
-                    <td className="px-4 py-3 tabular-nums">{c.bookingCount}</td>
-                    <td className="px-4 py-3 tabular-nums">{formatCurrency(c.totalSpent)}</td>
+                {data?.data.map((c) => (
+                  <tr key={c.id}>
+                    <td className="font-medium">{c.name}</td>
+                    <td className="text-muted-foreground">{c.email}</td>
+                    <td>{c.phone ?? "—"}</td>
+                    <td className="num">{c.vehicleCount}</td>
+                    <td className="num">{c.bookingCount}</td>
+                    <td className="num">{formatCurrency(c.totalSpent)}</td>
                   </tr>
                 ))}
               </tbody>

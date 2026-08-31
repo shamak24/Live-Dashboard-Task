@@ -17,11 +17,10 @@ import {
 import { api, ApiError } from "@/lib/api";
 import type { BreakdownItem } from "@/types";
 import { getStatusColor } from "@/components/StatusBadge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartSkeleton } from "@/components/ui/loading-skeletons";
 import { ErrorState, EmptyState } from "@/components/ui/section-states";
 import { PageHeader } from "@/components/PageHeader";
-import { formatCurrency, cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 
 interface AnalyticsSummary {
   bookingsOverTime: { date: string; count: number }[];
@@ -29,6 +28,19 @@ interface AnalyticsSummary {
   statusBreakdown: BreakdownItem[];
   categoryBreakdown: BreakdownItem[];
 }
+
+const CHART_TOOLTIP = {
+  contentStyle: {
+    background: "var(--color-card)",
+    border: "1px solid var(--color-border)",
+    borderRadius: "8px",
+    fontSize: "12px",
+    color: "var(--color-foreground)",
+  },
+  labelStyle: { color: "var(--color-muted-foreground)" },
+};
+
+const AXIS_TICK = { fontSize: 11, fill: "var(--color-muted-foreground)" };
 
 function ChartContainer({ children }: { children: React.ReactElement }) {
   return (
@@ -48,7 +60,6 @@ function ChartSection({
   isEmpty,
   emptyMessage,
   onRetry,
-  index,
   children,
 }: {
   title: string;
@@ -58,50 +69,43 @@ function ChartSection({
   isEmpty?: boolean;
   emptyMessage?: string;
   onRetry?: () => void;
-  index: number;
   children: React.ReactNode;
 }) {
   if (isLoading) {
-    return <ChartSkeleton className={cn(`stagger-${Math.min(index + 1, 4)}`)} />;
+    return <ChartSkeleton />;
   }
 
   if (isError) {
     return (
-      <Card className={cn("animate-fade-in-up", `stagger-${Math.min(index + 1, 4)}`)}>
-        <CardHeader>
-          <CardTitle className="text-base">{title}</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="ops-panel p-5">
+        <h3 className="text-body font-semibold">{title}</h3>
+        <div className="mt-4">
           <ErrorState
             title="Chart failed to load"
             message={errorMessage}
             onRetry={onRetry}
           />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   if (isEmpty) {
     return (
-      <Card className={cn("card-interactive animate-fade-in-up", `stagger-${Math.min(index + 1, 4)}`)}>
-        <CardHeader>
-          <CardTitle className="text-base">{title}</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="ops-panel p-5">
+        <h3 className="text-body font-semibold">{title}</h3>
+        <div className="mt-4">
           <EmptyState title={emptyMessage ?? "No data for this period"} />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className={cn("card-interactive animate-fade-in-up", `stagger-${Math.min(index + 1, 4)}`)}>
-      <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="animate-fade-in">{children}</CardContent>
-    </Card>
+    <div className="ops-panel p-5">
+      <h3 className="text-body font-semibold">{title}</h3>
+      <div className="mt-4">{children}</div>
+    </div>
   );
 }
 
@@ -151,7 +155,6 @@ export function AnalyticsPage() {
         <div className="grid gap-4 md:grid-cols-2">
           <ChartSection
             title="Bookings Over Time"
-            index={0}
             isLoading={isLoading}
             isError={false}
             isEmpty={!isLoading && data?.bookingsOverTime.length === 0}
@@ -159,17 +162,16 @@ export function AnalyticsPage() {
           >
             <ChartContainer>
               <LineChart data={data?.bookingsOverTime ?? []}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                <Tooltip />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="date" tick={AXIS_TICK} />
+                <YAxis tick={AXIS_TICK} allowDecimals={false} />
+                <Tooltip {...CHART_TOOLTIP} />
                 <Line
                   type="monotone"
                   dataKey="count"
-                  stroke="#3b82f6"
+                  stroke="var(--color-primary)"
                   strokeWidth={2}
                   dot={false}
-                  animationDuration={800}
                 />
               </LineChart>
             </ChartContainer>
@@ -177,7 +179,6 @@ export function AnalyticsPage() {
 
           <ChartSection
             title="Revenue Over Time"
-            index={1}
             isLoading={isLoading}
             isError={false}
             isEmpty={!isLoading && data?.revenueOverTime.length === 0}
@@ -185,17 +186,16 @@ export function AnalyticsPage() {
           >
             <ChartContainer>
               <LineChart data={data?.revenueOverTime ?? []}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip formatter={formatTooltipCurrency} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="date" tick={AXIS_TICK} />
+                <YAxis tick={AXIS_TICK} />
+                <Tooltip {...CHART_TOOLTIP} formatter={formatTooltipCurrency} />
                 <Line
                   type="monotone"
                   dataKey="revenue"
-                  stroke="#10b981"
+                  stroke="var(--status-completed)"
                   strokeWidth={2}
                   dot={false}
-                  animationDuration={800}
                 />
               </LineChart>
             </ChartContainer>
@@ -203,7 +203,6 @@ export function AnalyticsPage() {
 
           <ChartSection
             title="Status Breakdown"
-            index={2}
             isLoading={isLoading}
             isError={false}
             isEmpty={!isLoading && statusData.length === 0}
@@ -221,21 +220,20 @@ export function AnalyticsPage() {
                   label={({ name, percent }) =>
                     `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
                   }
-                  animationDuration={800}
+                  animationDuration={600}
                 >
                   {statusData.map((entry, i) => (
                     <Cell key={i} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip />
-                <Legend />
+                <Tooltip {...CHART_TOOLTIP} />
+                <Legend wrapperStyle={{ fontSize: "12px" }} />
               </PieChart>
             </ChartContainer>
           </ChartSection>
 
           <ChartSection
             title="Service Category Breakdown"
-            index={3}
             isLoading={isLoading}
             isError={false}
             isEmpty={!isLoading && categoryData.length === 0}
@@ -243,21 +241,20 @@ export function AnalyticsPage() {
           >
             <ChartContainer>
               <BarChart data={categoryData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis
                   dataKey="category"
-                  tick={{ fontSize: 10 }}
+                  tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
                   angle={-20}
                   textAnchor="end"
                   height={60}
                 />
-                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                <Tooltip />
+                <YAxis tick={AXIS_TICK} allowDecimals={false} />
+                <Tooltip {...CHART_TOOLTIP} />
                 <Bar
                   dataKey="count"
-                  fill="#6366f1"
-                  radius={[4, 4, 0, 0]}
-                  animationDuration={800}
+                  fill="var(--status-assigned)"
+                  radius={[2, 2, 0, 0]}
                 />
               </BarChart>
             </ChartContainer>
