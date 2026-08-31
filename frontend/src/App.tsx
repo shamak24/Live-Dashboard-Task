@@ -15,6 +15,7 @@ import { BookingDetailPage } from "@/pages/BookingDetailPage";
 import { MechanicsPage } from "@/pages/MechanicsPage";
 import { MechanicDetailPage } from "@/pages/MechanicDetailPage";
 import { CustomersPage } from "@/pages/CustomersPage";
+import { CreateBookingPage } from "@/pages/CreateBookingPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,6 +47,14 @@ export function App() {
                       }
                     />
                     <Route path="bookings" element={<BookingsPage />} />
+                    <Route
+                      path="bookings/new"
+                      element={
+                        <RoleGuard roles={["CUSTOMER"]}>
+                          <CreateBookingPage />
+                        </RoleGuard>
+                      }
+                    />
                     <Route path="bookings/:id" element={<BookingDetailPage />} />
                     <Route
                       path="mechanics"

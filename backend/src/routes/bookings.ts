@@ -5,6 +5,7 @@ import { prisma } from "../lib/prisma.js";
 import { authenticate, requireRoles, type AuthRequest } from "../middleware/auth.js";
 import {
   bookingInclude,
+  createBooking,
   getBookingById,
   retryBookingSummary,
   updateBookingStatus,
@@ -32,6 +33,12 @@ const statusUpdateSchema = z.object({
   status: z.nativeEnum(BookingStatus),
   mechanicId: z.string().optional(),
   version: z.number().int().optional(),
+});
+
+const createBookingSchema = z.object({
+  vehicleId: z.string().min(1),
+  serviceCategoryId: z.string().min(1),
+  scheduledAt: z.coerce.date(),
 });
 
 /**
@@ -110,6 +117,47 @@ router.get(
           totalPages: Math.ceil(total / limit),
         },
       });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * @openapi
+ * /api/bookings:
+ *   post:
+ *     summary: Create a new booking (customer)
+ *     tags: [Bookings]
+ */
+router.post(
+  "/",
+  authenticate,
+  requireRoles("CUSTOMER"),
+  async (req: AuthRequest, res, next) => {
+    try {
+      const body = createBookingSchema.parse(req.body);
+
+      const customer = await prisma.customer.findUnique({
+        where: { userId: req.user!.userId },
+      });
+      if (!customer) throw createError("Customer profile not found", 404);
+
+      const booking = await createBooking({
+        customerId: customer.id,
+        vehicleId: body.vehicleId,
+        serviceCategoryId: body.serviceCategoryId,
+        scheduledAt: body.scheduledAt,
+      });
+
+      const payload = { ...booking, amount: Number(booking.amount) };
+
+      const io = req.app.get("io");
+      if (io) {
+        io.emit("booking:updated", payload);
+      }
+
+      res.status(201).json(payload);
     } catch (err) {
       next(err);
     }

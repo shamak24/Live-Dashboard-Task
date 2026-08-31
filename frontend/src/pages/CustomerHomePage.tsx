@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Calendar, Clock } from "lucide-react";
+import { Calendar, Clock, CalendarPlus } from "lucide-react";
 import { api } from "@/lib/api";
 import { PageHeader, StatCard } from "@/components/PageHeader";
+import { Button } from "@/components/ui/button";
 import { StatGridSkeleton } from "@/components/ui/loading-skeletons";
 import { ErrorState } from "@/components/ui/section-states";
 import type { PaginatedBookings } from "@/types";
@@ -45,6 +46,14 @@ export function CustomerHomePage() {
       <PageHeader
         title="My Bookings"
         description="View status and history for your service appointments"
+        action={
+          <Button asChild size="sm">
+            <Link to="/bookings/new">
+              <CalendarPlus className="h-4 w-4" />
+              Book a service
+            </Link>
+          </Button>
+        }
       />
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -58,7 +67,15 @@ export function CustomerHomePage() {
         </CardHeader>
         <CardContent className="space-y-3">
           {bookings.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No bookings yet.</p>
+            <div className="space-y-3 text-center">
+              <p className="text-sm text-muted-foreground">No bookings yet.</p>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/bookings/new">
+                  <CalendarPlus className="h-4 w-4" />
+                  Book your first service
+                </Link>
+              </Button>
+            </div>
           ) : (
             bookings.slice(0, 10).map((b) => (
               <Link

@@ -33,9 +33,10 @@ export function BookingDetailPage() {
   });
 
   const { data: mechanicsData } = useQuery({
-    queryKey: ["mechanics-assign"],
-    queryFn: () => api.get<{ data: MechanicListItem[] }>("/api/mechanics"),
-    enabled: isAdmin,
+    queryKey: ["mechanics-available"],
+    queryFn: () =>
+      api.get<{ data: MechanicListItem[] }>("/api/mechanics?available=true"),
+    enabled: isAdmin && !!booking && booking.status === "PENDING" && !booking.mechanic,
   });
 
   const statusMutation = useMutation({
@@ -128,6 +129,8 @@ export function BookingDetailPage() {
     nextStatuses.includes("ASSIGNED") &&
     !booking.mechanic;
 
+  const availableMechanics = mechanicsData?.data ?? [];
+
   const infoCards = [
     {
       title: "Customer",
@@ -197,16 +200,32 @@ export function BookingDetailPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {needsMechanicPick && (
-              <select
-                className="h-9 w-full max-w-xs rounded-md border border-border bg-card px-3 text-sm"
-                value={selectedMechanicId}
-                onChange={(e) => setSelectedMechanicId(e.target.value)}
-              >
-                <option value="">Select mechanic...</option>
-                {mechanicsData?.data.map((m) => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
-                ))}
-              </select>
+              <div className="space-y-2">
+                <select
+                  className="h-9 w-full max-w-xs rounded-md border border-border bg-card px-3 text-sm"
+                  value={selectedMechanicId}
+                  onChange={(e) => setSelectedMechanicId(e.target.value)}
+                  disabled={availableMechanics.length === 0}
+                >
+                  <option value="">
+                    {availableMechanics.length === 0
+                      ? "No available mechanics"
+                      : "Select mechanic..."}
+                  </option>
+                  {availableMechanics.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                      {m.specialty ? ` — ${m.specialty}` : ""}
+                    </option>
+                  ))}
+                </select>
+                {availableMechanics.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    All mechanics are currently on a job or offline. Try again later
+                    or complete an active booking first.
+                  </p>
+                )}
+              </div>
             )}
             <div className="flex flex-wrap gap-2">
               {nextStatuses.map((status) => (

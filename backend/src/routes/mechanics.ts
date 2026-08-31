@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { BookingStatus } from "@prisma/client";
+import { BookingStatus, MechanicStatus, Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { authenticate, requireRoles, type AuthRequest } from "../middleware/auth.js";
 import { createError } from "../middleware/errorHandler.js";
@@ -23,9 +23,21 @@ router.get(
   "/",
   authenticate,
   requireRoles("ADMIN", "MECHANIC"),
-  async (_req, res, next) => {
+  async (req, res, next) => {
     try {
+      const availableOnly = req.query.available === "true";
+
+      const where: Prisma.MechanicWhereInput = availableOnly
+        ? {
+            status: MechanicStatus.AVAILABLE,
+            bookings: {
+              none: { status: { in: ACTIVE_STATUSES } },
+            },
+          }
+        : {};
+
       const mechanics = await prisma.mechanic.findMany({
+        where,
         include: {
           user: { select: { id: true, name: true, email: true } },
           bookings: {

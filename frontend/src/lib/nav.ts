@@ -5,6 +5,7 @@ import {
   Calendar,
   Wrench,
   Users,
+  CalendarPlus,
 } from "lucide-react";
 import type { User } from "@/types";
 
@@ -35,6 +36,7 @@ export function getNavItems(role: User["role"]): NavItem[] {
 
   return [
     { to: "/", label: "My Bookings", icon: Calendar, end: true },
+    { to: "/bookings/new", label: "Book Service", icon: CalendarPlus },
     { to: "/bookings", label: "Booking History", icon: LayoutDashboard },
   ];
 }

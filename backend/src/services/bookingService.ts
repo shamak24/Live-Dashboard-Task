@@ -6,6 +6,11 @@ import {
   generatePreVisitSummary,
 } from "../services/llmService.js";
 
+const TRANSACTION_OPTIONS = {
+  maxWait: 10_000,
+  timeout: 15_000,
+};
+
 const ACTIVE_STATUSES: BookingStatus[] = [
   BookingStatus.ASSIGNED,
   BookingStatus.MECHANIC_ON_THE_WAY,
@@ -66,153 +71,57 @@ export async function getBookingById(id: string) {
   });
 }
 
-/**
- * Assign mechanic with row-level locking to prevent double-booking.
- * Uses SELECT FOR UPDATE inside a transaction for concurrency safety.
- */
-async function assignMechanicWithLock(
-  bookingId: string,
-  mechanicId: string,
-  expectedVersion: number
-) {
-  return prisma.$transaction(async (tx) => {
-    // Lock the mechanic row to prevent concurrent assignments
-    const lockedMechanic = await tx.$queryRaw<
-      { id: string; status: string }[]
-    >`
-      SELECT id, status FROM "Mechanic"
-      WHERE id = ${mechanicId}
-      FOR UPDATE
-    `;
+export async function createBooking(input: {
+  customerId: string;
+  vehicleId: string;
+  serviceCategoryId: string;
+  scheduledAt: Date;
+}) {
+  const vehicle = await prisma.vehicle.findFirst({
+    where: { id: input.vehicleId, customerId: input.customerId },
+  });
+  if (!vehicle) {
+    throw createError("Vehicle not found for this customer", 404);
+  }
 
-    if (!lockedMechanic.length) {
-      throw createError("Mechanic not found", 404);
-    }
+  const category = await prisma.serviceCategory.findUnique({
+    where: { id: input.serviceCategoryId },
+  });
+  if (!category) {
+    throw createError("Service category not found", 404);
+  }
 
-    // Check for overlapping active bookings on this mechanic
-    const activeBooking = await tx.booking.findFirst({
-      where: {
-        mechanicId,
-        status: { in: ACTIVE_STATUSES },
-        id: { not: bookingId },
-      },
-    });
+  if (input.scheduledAt.getTime() <= Date.now()) {
+    throw createError("Scheduled time must be in the future", 400);
+  }
 
-    if (activeBooking) {
-      throw createError(
-        "Mechanic already has an active booking — cannot double-book",
-        409,
-        { existingBookingId: activeBooking.id }
-      );
-    }
-
-    const booking = await tx.booking.findUnique({ where: { id: bookingId } });
-    if (!booking) {
-      throw createError("Booking not found", 404);
-    }
-
-    if (booking.version !== expectedVersion) {
-      throw createError(
-        "Booking was modified by another request — please retry",
-        409
-      );
-    }
-
-    const updated = await tx.booking.update({
-      where: { id: bookingId },
-      data: {
-        mechanicId,
-        status: BookingStatus.ASSIGNED,
-        version: { increment: 1 },
-      },
-      include: bookingInclude,
-    });
-
-    await tx.mechanic.update({
-      where: { id: mechanicId },
-      data: { status: MechanicStatus.ON_JOB },
-    });
-
-    return updated;
+  return prisma.booking.create({
+    data: {
+      customerId: input.customerId,
+      vehicleId: input.vehicleId,
+      serviceCategoryId: input.serviceCategoryId,
+      scheduledAt: input.scheduledAt,
+      amount: category.basePrice,
+      status: BookingStatus.PENDING,
+    },
+    include: bookingInclude,
   });
 }
 
-export async function updateBookingStatus(
+function isPrismaError(
+  err: unknown,
+  code: string
+): err is Prisma.PrismaClientKnownRequestError {
+  return (
+    err instanceof Prisma.PrismaClientKnownRequestError && err.code === code
+  );
+}
+
+async function applyLlmSummaries(
   bookingId: string,
-  newStatus: BookingStatus,
-  mechanicId?: string,
-  expectedVersion?: number
+  updated: NonNullable<Awaited<ReturnType<typeof getBookingById>>>,
+  newStatus: BookingStatus
 ) {
-  const booking = await prisma.booking.findUnique({
-    where: { id: bookingId },
-    include: bookingInclude,
-  });
-
-  if (!booking) {
-    throw createError("Booking not found", 404);
-  }
-
-  const allowed = STATUS_FLOW[booking.status];
-  if (!allowed.includes(newStatus)) {
-    throw createError(
-      `Cannot transition from ${booking.status} to ${newStatus}`,
-      400
-    );
-  }
-
-  // Assigning mechanic uses dedicated locked transaction
-  if (newStatus === BookingStatus.ASSIGNED && mechanicId) {
-    return assignMechanicWithLock(
-      bookingId,
-      mechanicId,
-      expectedVersion ?? booking.version
-    );
-  }
-
-  const updated = await prisma.$transaction(async (tx) => {
-    const current = await tx.booking.findUnique({ where: { id: bookingId } });
-    if (!current) throw createError("Booking not found", 404);
-
-    if (expectedVersion !== undefined && current.version !== expectedVersion) {
-      throw createError(
-        "Booking was modified by another request — please retry",
-        409
-      );
-    }
-
-  const data: Prisma.BookingUpdateInput = {
-      status: newStatus,
-      version: { increment: 1 },
-    };
-
-    const result = await tx.booking.update({
-      where: { id: bookingId },
-      data,
-      include: bookingInclude,
-    });
-
-    // Update mechanic status based on booking lifecycle
-    if (result.mechanicId) {
-      if (newStatus === BookingStatus.COMPLETED) {
-        await tx.mechanic.update({
-          where: { id: result.mechanicId },
-          data: {
-            status: MechanicStatus.AVAILABLE,
-            jobsCompleted: { increment: 1 },
-          },
-        });
-      } else if (ACTIVE_STATUSES.includes(newStatus)) {
-        await tx.mechanic.update({
-          where: { id: result.mechanicId },
-          data: { status: MechanicStatus.ON_JOB },
-        });
-      }
-    }
-
-    return result;
-  });
-
-  // LLM summaries — non-blocking, failures logged
   try {
     if (newStatus === BookingStatus.ASSIGNED && !updated.preVisitSummary) {
       const ctx = formatBookingForLlm(updated);
@@ -246,6 +155,185 @@ export async function updateBookingStatus(
   }
 
   return updated;
+}
+
+/**
+ * Assign mechanic with a short transaction safe for Neon pooler connections.
+ * Double-booking is prevented by the active-booking check plus DB partial unique index.
+ */
+async function assignMechanicWithLock(
+  bookingId: string,
+  mechanicId: string,
+  expectedVersion: number
+) {
+  try {
+    await prisma.$transaction(async (tx) => {
+      const mechanic = await tx.mechanic.findUnique({
+        where: { id: mechanicId },
+        select: { id: true },
+      });
+      if (!mechanic) {
+        throw createError("Mechanic not found", 404);
+      }
+
+      const activeBooking = await tx.booking.findFirst({
+        where: {
+          mechanicId,
+          status: { in: ACTIVE_STATUSES },
+          id: { not: bookingId },
+        },
+        select: { id: true },
+      });
+
+      if (activeBooking) {
+        throw createError(
+          "Mechanic already has an active booking — cannot double-book",
+          409,
+          { existingBookingId: activeBooking.id }
+        );
+      }
+
+      const booking = await tx.booking.findUnique({
+        where: { id: bookingId },
+        select: { id: true, version: true },
+      });
+      if (!booking) {
+        throw createError("Booking not found", 404);
+      }
+
+      if (booking.version !== expectedVersion) {
+        throw createError(
+          "Booking was modified by another request — please retry",
+          409
+        );
+      }
+
+      await tx.booking.update({
+        where: { id: bookingId },
+        data: {
+          mechanicId,
+          status: BookingStatus.ASSIGNED,
+          version: { increment: 1 },
+        },
+      });
+
+      await tx.mechanic.update({
+        where: { id: mechanicId },
+        data: { status: MechanicStatus.ON_JOB },
+      });
+    }, TRANSACTION_OPTIONS);
+  } catch (err) {
+    if (isPrismaError(err, "P2002")) {
+      throw createError(
+        "Mechanic already has an active booking — cannot double-book",
+        409
+      );
+    }
+    if (isPrismaError(err, "P2028")) {
+      throw createError(
+        "Database transaction timed out — please retry the assignment",
+        503
+      );
+    }
+    throw err;
+  }
+
+  const updated = await getBookingById(bookingId);
+  if (!updated) {
+    throw createError("Booking not found", 404);
+  }
+  return updated;
+}
+
+export async function updateBookingStatus(
+  bookingId: string,
+  newStatus: BookingStatus,
+  mechanicId?: string,
+  expectedVersion?: number
+) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: bookingInclude,
+  });
+
+  if (!booking) {
+    throw createError("Booking not found", 404);
+  }
+
+  const allowed = STATUS_FLOW[booking.status];
+  if (!allowed.includes(newStatus)) {
+    throw createError(
+      `Cannot transition from ${booking.status} to ${newStatus}`,
+      400
+    );
+  }
+
+  // Assigning mechanic uses dedicated locked transaction
+  if (newStatus === BookingStatus.ASSIGNED && mechanicId) {
+    const assigned = await assignMechanicWithLock(
+      bookingId,
+      mechanicId,
+      expectedVersion ?? booking.version
+    );
+    return applyLlmSummaries(bookingId, assigned, newStatus);
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const current = await tx.booking.findUnique({
+        where: { id: bookingId },
+        select: { id: true, version: true, mechanicId: true },
+      });
+      if (!current) throw createError("Booking not found", 404);
+
+      if (expectedVersion !== undefined && current.version !== expectedVersion) {
+        throw createError(
+          "Booking was modified by another request — please retry",
+          409
+        );
+      }
+
+      const data: Prisma.BookingUpdateInput = {
+        status: newStatus,
+        version: { increment: 1 },
+      };
+
+      await tx.booking.update({
+        where: { id: bookingId },
+        data,
+      });
+
+      if (current.mechanicId) {
+        if (newStatus === BookingStatus.COMPLETED) {
+          await tx.mechanic.update({
+            where: { id: current.mechanicId },
+            data: {
+              status: MechanicStatus.AVAILABLE,
+              jobsCompleted: { increment: 1 },
+            },
+          });
+        } else if (ACTIVE_STATUSES.includes(newStatus)) {
+          await tx.mechanic.update({
+            where: { id: current.mechanicId },
+            data: { status: MechanicStatus.ON_JOB },
+          });
+        }
+      }
+    }, TRANSACTION_OPTIONS);
+  } catch (err) {
+    if (isPrismaError(err, "P2028")) {
+      throw createError(
+        "Database transaction timed out — please retry the status update",
+        503
+      );
+    }
+    throw err;
+  }
+
+  const updated = await getBookingById(bookingId);
+  if (!updated) throw createError("Booking not found", 404);
+
+  return applyLlmSummaries(bookingId, updated, newStatus);
 }
 
 export async function retryBookingSummary(

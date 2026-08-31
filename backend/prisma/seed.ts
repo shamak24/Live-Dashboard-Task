@@ -6,6 +6,10 @@ import {
   Role,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import {
+  buildTemplatePostVisitSummary,
+  buildTemplatePreVisitSummary,
+} from "../src/services/llmService.js";
 
 const prisma = new PrismaClient();
 
@@ -77,6 +81,7 @@ async function main() {
 
   // Mechanics (20+)
   const mechanics = [];
+  const mechanicNames: Record<string, string> = {};
   for (let i = 0; i < 22; i++) {
     const user = await prisma.user.create({
       data: {
@@ -101,10 +106,12 @@ async function main() {
       include: { mechanic: true },
     });
     mechanics.push(user.mechanic!);
+    mechanicNames[user.mechanic!.id] = user.name;
   }
 
   // Customers (50+)
   const customers = [];
+  const customerNames: Record<string, string> = {};
   for (let i = 0; i < 55; i++) {
     const user = await prisma.user.create({
       data: {
@@ -122,6 +129,7 @@ async function main() {
       include: { customer: true },
     });
     customers.push(user.customer!);
+    customerNames[user.customer!.id] = user.name;
   }
 
   // Vehicles for each customer
@@ -197,6 +205,29 @@ async function main() {
       scheduledAt
     );
 
+    const assignedMechanic = mechanicId
+      ? mechanics.find((m) => m.id === mechanicId)
+      : null;
+
+    const summaryContext = {
+      status,
+      amount,
+      scheduledAt,
+      customer: {
+        name: customerNames[customer.id],
+        phone: customer.phone,
+        address: customer.address,
+      },
+      vehicle,
+      serviceCategory: category,
+      mechanic: assignedMechanic
+        ? {
+            name: mechanicNames[assignedMechanic.id],
+            specialty: assignedMechanic.specialty,
+          }
+        : undefined,
+    };
+
     await prisma.booking.create({
       data: {
         customerId: customer.id,
@@ -209,11 +240,11 @@ async function main() {
         createdAt,
         preVisitSummary:
           status !== BookingStatus.PENDING
-            ? faker.lorem.sentences(2)
+            ? buildTemplatePreVisitSummary(summaryContext)
             : null,
         postVisitSummary:
           status === BookingStatus.COMPLETED
-            ? faker.lorem.sentences(2)
+            ? buildTemplatePostVisitSummary(summaryContext)
             : null,
       },
     });

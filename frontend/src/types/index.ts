@@ -74,6 +74,30 @@ export interface MechanicListItem {
   lastBooking: Booking | null;
 }
 
+export interface Vehicle {
+  id: string;
+  make: string;
+  model: string;
+  year: number;
+  plate: string;
+}
+
+export interface CustomerProfile {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  address?: string | null;
+  vehicles: Vehicle[];
+}
+
+export interface ServiceCategory {
+  id: string;
+  name: string;
+  description?: string | null;
+  basePrice: number;
+}
+
 export interface ChartDataPoint {
   date: string;
   count?: number;

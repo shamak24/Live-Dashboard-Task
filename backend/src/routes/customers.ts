@@ -1,8 +1,41 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
-import { authenticate, requireRoles } from "../middleware/auth.js";
+import { authenticate, requireRoles, type AuthRequest } from "../middleware/auth.js";
+import { createError } from "../middleware/errorHandler.js";
 
 const router = Router();
+
+router.get(
+  "/me",
+  authenticate,
+  requireRoles("CUSTOMER"),
+  async (req: AuthRequest, res, next) => {
+    try {
+      const customer = await prisma.customer.findUnique({
+        where: { userId: req.user!.userId },
+        include: {
+          user: { select: { name: true, email: true } },
+          vehicles: {
+            orderBy: [{ year: "desc" }, { make: "asc" }],
+          },
+        },
+      });
+
+      if (!customer) throw createError("Customer profile not found", 404);
+
+      res.json({
+        id: customer.id,
+        name: customer.user.name,
+        email: customer.user.email,
+        phone: customer.phone,
+        address: customer.address,
+        vehicles: customer.vehicles,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
 
 /**
  * @openapi
