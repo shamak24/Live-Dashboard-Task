@@ -8,6 +8,7 @@ import {
 import { io, type Socket } from "socket.io-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { getAuthToken } from "@/lib/auth-token";
 import type { Booking } from "@/types";
 
 const SOCKET_URL = String(import.meta.env.VITE_API_URL || "").replace(/\/+$/, "") ||
@@ -36,9 +37,11 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const token = getAuthToken();
     const s = io(SOCKET_URL, {
       transports: ["websocket", "polling"],
       withCredentials: true,
+      auth: token ? { token } : undefined,
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,

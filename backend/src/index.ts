@@ -20,6 +20,9 @@ const app = express();
 const httpServer = createServer(app);
 const PORT = process.env.PORT || 3001;
 
+// Render / reverse proxies — needed for secure cookies behind TLS termination
+app.set("trust proxy", 1);
+
 const corsOptions = createCorsOptions();
 const socketOrigins = getAllowedOrigins();
 

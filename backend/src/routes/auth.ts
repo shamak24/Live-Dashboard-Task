@@ -6,6 +6,10 @@ import { prisma } from "../lib/prisma.js";
 import { authenticate, signToken, type AuthRequest } from "../middleware/auth.js";
 import { createError } from "../middleware/errorHandler.js";
 import { logUserRegistered } from "../services/activityLogHelpers.js";
+import {
+  getAuthCookieName,
+  getAuthCookieOptions,
+} from "../config/cookies.js";
 
 const router = Router();
 
@@ -58,14 +62,10 @@ router.post("/login", async (req, res, next) => {
       role: user.role,
     });
 
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie(getAuthCookieName(), token, getAuthCookieOptions());
 
     res.json({
+      token,
       user: {
         id: user.id,
         name: user.name,
@@ -125,14 +125,10 @@ router.post("/register", async (req, res, next) => {
       role: user.role,
     });
 
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie(getAuthCookieName(), token, getAuthCookieOptions());
 
     res.status(201).json({
+      token,
       user: {
         id: user.id,
         name: user.name,
@@ -146,7 +142,7 @@ router.post("/register", async (req, res, next) => {
 });
 
 router.post("/logout", (_req, res) => {
-  res.clearCookie("token");
+  res.clearCookie(getAuthCookieName(), getAuthCookieOptions());
   res.json({ success: true });
 });
 

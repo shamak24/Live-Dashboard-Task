@@ -81,6 +81,7 @@ export function OverviewPage() {
     queryKey: ["dashboard"],
     queryFn: () => api.get<DashboardStats>("/api/dashboard"),
     refetchInterval: 30000,
+    retry: false,
   });
 
   useEffect(() => {
@@ -99,6 +100,7 @@ export function OverviewPage() {
     queryFn: () =>
       api.get<{ data: ActivityLog[] }>("/api/dashboard/activity-logs?limit=10"),
     refetchInterval: 30000,
+    retry: false,
   });
 
   if (isLoading) {

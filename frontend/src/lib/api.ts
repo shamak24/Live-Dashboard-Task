@@ -1,4 +1,6 @@
 /** Base API URL without trailing slash (avoids `//api/...` URLs) */
+import { clearAuthToken, getAuthToken } from "./auth-token";
+
 const API_URL = String(import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 
 function buildApiUrl(path: string): string {
@@ -52,12 +54,14 @@ export async function apiFetch<T>(
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
+      const token = getAuthToken();
       const response = await fetch(url, {
         ...fetchOptions,
         credentials: "include",
         signal: controller.signal,
         headers: {
           "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
           ...fetchOptions.headers,
         },
       });
@@ -67,7 +71,17 @@ export async function apiFetch<T>(
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: "Request failed" }));
-        throw new ApiError(error.error || "Request failed", response.status, error.details);
+        const apiError = new ApiError(
+          error.error || "Request failed",
+          response.status,
+          error.details
+        );
+
+        if (response.status === 401) {
+          clearAuthToken();
+        }
+
+        throw apiError;
       }
 
       serverWarmed = true;
@@ -76,7 +90,7 @@ export async function apiFetch<T>(
     } catch (err) {
       clearTimeout(timeoutId);
 
-      if (attempt >= retries) {
+      if (attempt >= retries || err instanceof ApiError) {
         clearTimeout(wakeTimer);
         wakingUpCallback?.(false);
         if (err instanceof ApiError) throw err;

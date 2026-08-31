@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { api } from "@/lib/api";
+import { clearAuthToken, setAuthToken } from "@/lib/auth-token";
 import type { User } from "@/types";
 
 interface RegisterInput {
@@ -35,33 +36,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api
       .get<{ user: User }>("/api/auth/me")
       .then((data) => setUser(data.user))
-      .catch(() => setUser(null))
+      .catch(() => {
+        clearAuthToken();
+        setUser(null);
+      })
       .finally(() => setLoading(false));
   }, []);
 
   const login = async (email: string, password: string) => {
-    const data = await api.post<{ user: User }>("/api/auth/login", {
+    const data = await api.post<{ user: User; token?: string }>("/api/auth/login", {
       email,
       password,
     });
+    if (data.token) setAuthToken(data.token);
     setUser(data.user);
     return data.user;
   };
 
   const register = async (input: RegisterInput) => {
-    const data = await api.post<{ user: User }>("/api/auth/register", {
+    const data = await api.post<{ user: User; token?: string }>("/api/auth/register", {
       name: input.name,
       email: input.email,
       password: input.password,
       role: input.role,
       specialty: input.specialty,
     });
+    if (data.token) setAuthToken(data.token);
     setUser(data.user);
   };
 
   const logout = async () => {
-    await api.post("/api/auth/logout");
-    setUser(null);
+    try {
+      await api.post("/api/auth/logout");
+    } finally {
+      clearAuthToken();
+      setUser(null);
+    }
   };
 
   const refreshUser = async () => {
@@ -69,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await api.get<{ user: User }>("/api/auth/me");
       setUser(data.user);
     } catch {
+      clearAuthToken();
       setUser(null);
     }
   };
