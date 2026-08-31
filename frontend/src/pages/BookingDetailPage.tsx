@@ -1,25 +1,90 @@
+import { useState } from "react";
 import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { RefreshCw, ArrowRight } from "lucide-react";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { formatCurrency, formatDate } from "@/lib/utils";
-import type { Booking } from "@/types";
+import { formatCurrency, formatDate, cn } from "@/lib/utils";
+import type { Booking, MechanicListItem } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   DetailCardsSkeleton,
   PageHeaderSkeleton,
 } from "@/components/ui/loading-skeletons";
-import { ErrorState } from "@/components/ui/section-states";
-import { cn } from "@/lib/utils";
+import { ErrorState, Spinner } from "@/components/ui/section-states";
+import { useAuth } from "@/contexts/AuthContext";
+import { getNextStatuses, formatStatusLabel } from "@/lib/bookingStatus";
 
 export function BookingDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [selectedMechanicId, setSelectedMechanicId] = useState("");
+
+  const isAdmin = user?.role === "ADMIN";
+  const canUpdateStatus = isAdmin || user?.role === "MECHANIC";
 
   const { data: booking, isLoading, isError, refetch } = useQuery({
     queryKey: ["booking", id],
     queryFn: () => api.get<Booking>(`/api/bookings/${id}`),
     enabled: !!id,
   });
+
+  const { data: mechanicsData } = useQuery({
+    queryKey: ["mechanics-assign"],
+    queryFn: () => api.get<{ data: MechanicListItem[] }>("/api/mechanics"),
+    enabled: isAdmin,
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: (body: { status: string; mechanicId?: string; version: number }) =>
+      api.patch<Booking>(`/api/bookings/${id}/status`, body),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["booking", id], updated);
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      toast.success("Status updated");
+      setSelectedMechanicId("");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Failed to update status");
+    },
+  });
+
+  const retryMutation = useMutation({
+    mutationFn: (type: "pre" | "post") =>
+      api.post<Booking>(`/api/bookings/${id}/retry-summary`, { type }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["booking", id], updated);
+      toast.success("Summary regenerated");
+    },
+    onError: () => {
+      toast.error("Failed to regenerate summary");
+    },
+  });
+
+  const handleStatusUpdate = (nextStatus: string) => {
+    if (!booking) return;
+
+    if (nextStatus === "ASSIGNED" && isAdmin && !booking.mechanic) {
+      if (!selectedMechanicId) {
+        toast.error("Select a mechanic before assigning");
+        return;
+      }
+      statusMutation.mutate({
+        status: nextStatus,
+        mechanicId: selectedMechanicId,
+        version: booking.version,
+      });
+      return;
+    }
+
+    statusMutation.mutate({
+      status: nextStatus,
+      version: booking.version,
+    });
+  };
 
   if (isLoading) {
     return (
@@ -55,6 +120,13 @@ export function BookingDetailPage() {
       />
     );
   }
+
+  const nextStatuses = getNextStatuses(booking.status);
+  const needsMechanicPick =
+    isAdmin &&
+    booking.status === "PENDING" &&
+    nextStatuses.includes("ASSIGNED") &&
+    !booking.mechanic;
 
   const infoCards = [
     {
@@ -110,7 +182,7 @@ export function BookingDetailPage() {
         <h1 className="text-2xl font-semibold tracking-tight">
           Booking #{booking.id.slice(0, 8)}
         </h1>
-        <div className="mt-2 flex items-center gap-2">
+        <div className="mt-2 flex flex-wrap items-center gap-2">
           <StatusBadge status={booking.status} />
           <span className="text-sm text-muted-foreground">
             Scheduled {formatDate(booking.scheduledAt)}
@@ -118,11 +190,51 @@ export function BookingDetailPage() {
         </div>
       </div>
 
+      {canUpdateStatus && nextStatuses.length > 0 && (
+        <Card className="animate-fade-in-up stagger-1 border-primary/20">
+          <CardHeader>
+            <CardTitle className="text-base">Update status</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {needsMechanicPick && (
+              <select
+                className="h-9 w-full max-w-xs rounded-md border border-border bg-card px-3 text-sm"
+                value={selectedMechanicId}
+                onChange={(e) => setSelectedMechanicId(e.target.value)}
+              >
+                <option value="">Select mechanic...</option>
+                {mechanicsData?.data.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {nextStatuses.map((status) => (
+                <Button
+                  key={status}
+                  size="sm"
+                  variant={status === "CANCELLED" ? "outline" : "default"}
+                  disabled={statusMutation.isPending}
+                  onClick={() => handleStatusUpdate(status)}
+                >
+                  {statusMutation.isPending ? (
+                    <Spinner size="sm" />
+                  ) : (
+                    <ArrowRight className="h-4 w-4" />
+                  )}
+                  {formatStatusLabel(status)}
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-4 md:grid-cols-2">
         {infoCards.map((card, i) => (
           <Card
             key={card.title}
-            className={cn("card-interactive animate-fade-in-up", `stagger-${i + 1}`)}
+            className={cn("card-interactive animate-fade-in-up", `stagger-${i + 2}`)}
           >
             <CardHeader>
               <CardTitle className="text-base">{card.title}</CardTitle>
@@ -133,8 +245,23 @@ export function BookingDetailPage() {
       </div>
 
       <Card className="card-interactive animate-fade-in-up stagger-5">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">Pre-Visit Summary</CardTitle>
+          {isAdmin && (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={retryMutation.isPending}
+              onClick={() => retryMutation.mutate("pre")}
+            >
+              {retryMutation.isPending ? (
+                <Spinner size="sm" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              Retry
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <p className="text-sm leading-relaxed text-muted-foreground">
@@ -144,8 +271,23 @@ export function BookingDetailPage() {
       </Card>
 
       <Card className="card-interactive animate-fade-in-up stagger-6">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">Post-Visit Summary</CardTitle>
+          {isAdmin && booking.status === "COMPLETED" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={retryMutation.isPending}
+              onClick={() => retryMutation.mutate("post")}
+            >
+              {retryMutation.isPending ? (
+                <Spinner size="sm" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              Retry
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <p className="text-sm leading-relaxed text-muted-foreground">

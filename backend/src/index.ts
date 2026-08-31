@@ -14,6 +14,7 @@ import dashboardRoutes from "./routes/dashboard.js";
 import bookingsRoutes from "./routes/bookings.js";
 import mechanicsRoutes from "./routes/mechanics.js";
 import customersRoutes from "./routes/customers.js";
+import serviceCategoriesRoutes from "./routes/serviceCategories.js";
 
 const app = express();
 const httpServer = createServer(app);
@@ -81,8 +82,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/bookings", bookingsRoutes);
 app.use("/api/mechanics", mechanicsRoutes);
 app.use("/api/customers", customersRoutes);
-
-// Chart data is mounted under /api/dashboard/charts (see dashboard.ts)
+app.use("/api/service-categories", serviceCategoriesRoutes);
 
 // Admin demo endpoint to trigger live booking simulation
 app.post("/api/demo/simulate", async (_req, res) => {
@@ -103,6 +103,24 @@ app.use(errorHandler);
 httpServer.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   console.log(`API docs at http://localhost:${PORT}/api-docs`);
+
+  if (process.env.DEMO_AUTO_SIMULATE === "true") {
+    const intervalMs = Number(process.env.DEMO_AUTO_SIMULATE_MS) || 30000;
+    console.log(`Demo auto-simulate enabled (every ${intervalMs}ms)`);
+    setInterval(async () => {
+      try {
+        const { simulateBookingAdvance } = await import(
+          "./scripts/simulateBookings.js"
+        );
+        const count = await simulateBookingAdvance(io);
+        if (count > 0) {
+          console.log(`Auto-simulated ${count} booking(s)`);
+        }
+      } catch (err) {
+        console.error("Auto-simulate failed:", err);
+      }
+    }, intervalMs);
+  }
 });
 
 export { app, io };

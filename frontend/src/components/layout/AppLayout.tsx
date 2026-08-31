@@ -1,15 +1,12 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard,
-  BarChart3,
-  Calendar,
-  Wrench,
   Moon,
   Sun,
   Menu,
   X,
   Zap,
   LogOut,
+  Wrench,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -20,13 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSocket } from "@/contexts/SocketContext";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-
-const navItems = [
-  { to: "/", label: "Overview", icon: LayoutDashboard },
-  { to: "/analytics", label: "Analytics", icon: BarChart3 },
-  { to: "/bookings", label: "Bookings", icon: Calendar },
-  { to: "/mechanics", label: "Mechanics", icon: Wrench },
-];
+import { getNavItems } from "@/lib/nav";
 
 export function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -37,6 +28,7 @@ export function AppLayout() {
   const { user, logout } = useAuth();
   const { connected } = useSocket();
   const location = useLocation();
+  const navItems = getNavItems(user?.role ?? "CUSTOMER");
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
@@ -75,11 +67,11 @@ export function AppLayout() {
         </div>
 
         <nav className="flex flex-col gap-1 p-4">
-          {navItems.map(({ to, label, icon: Icon }) => (
+          {navItems.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
               to={to}
-              end={to === "/"}
+              end={end ?? to === "/"}
               className={({ isActive }) =>
                 cn(
                   "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200",

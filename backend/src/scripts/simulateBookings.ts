@@ -10,6 +10,12 @@ const STATUS_ADVANCE: Partial<Record<BookingStatus, BookingStatus>> = {
   IN_PROGRESS: BookingStatus.COMPLETED,
 };
 
+const ACTIVE_STATUSES: BookingStatus[] = [
+  BookingStatus.ASSIGNED,
+  BookingStatus.MECHANIC_ON_THE_WAY,
+  BookingStatus.IN_PROGRESS,
+];
+
 /**
  * Randomly advance a few active bookings for live demo visibility.
  * Can be triggered via POST /api/demo/simulate or run as a cron script.
@@ -44,10 +50,17 @@ export async function simulateBookingAdvance(io?: Server): Promise<number> {
     try {
       let mechanicId = booking.mechanicId;
 
-      // Auto-assign mechanic if advancing from PENDING
+      // Auto-assign a mechanic with no active bookings
       if (booking.status === BookingStatus.PENDING && !mechanicId) {
         const available = await prisma.mechanic.findFirst({
-          where: { status: "AVAILABLE" },
+          where: {
+            status: "AVAILABLE",
+            bookings: {
+              none: {
+                status: { in: ACTIVE_STATUSES },
+              },
+            },
+          },
         });
         if (!available) continue;
         mechanicId = available.id;
@@ -68,6 +81,10 @@ export async function simulateBookingAdvance(io?: Server): Promise<number> {
 
       count++;
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.includes("double-book") || message.includes("modified by another")) {
+        continue;
+      }
       console.error(`Failed to advance booking ${booking.id}:`, err);
     }
   }

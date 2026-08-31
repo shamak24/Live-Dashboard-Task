@@ -7,6 +7,7 @@ import {
 } from "react";
 import { io, type Socket } from "socket.io-client";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Booking } from "@/types";
 
 const SOCKET_URL =
@@ -23,21 +24,31 @@ const SocketContext = createContext<SocketContextValue>({
 });
 
 export function SocketProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    if (!user) {
+      setSocket(null);
+      setConnected(false);
+      return;
+    }
+
     const s = io(SOCKET_URL, {
       transports: ["websocket", "polling"],
       withCredentials: true,
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
     });
 
     s.on("connect", () => setConnected(true));
     s.on("disconnect", () => setConnected(false));
 
     s.on("booking:updated", (booking: Booking) => {
-      // Update bookings list cache in place
       queryClient.setQueriesData<{ data: Booking[]; pagination: unknown }>(
         { queryKey: ["bookings"] },
         (old) => {
@@ -51,19 +62,20 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         }
       );
 
-      // Update single booking cache
       queryClient.setQueryData(["booking", booking.id], booking);
-
-      // Invalidate dashboard stats for live counter updates
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["mechanics"] });
     });
 
     setSocket(s);
+
     return () => {
+      s.removeAllListeners();
       s.disconnect();
+      setSocket(null);
+      setConnected(false);
     };
-  }, [queryClient]);
+  }, [user, queryClient]);
 
   return (
     <SocketContext.Provider value={{ socket, connected }}>
