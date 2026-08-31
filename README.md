@@ -15,6 +15,12 @@ The **backend is deployed on Render’s free tier**. After ~15 minutes of inacti
 
 **This is expected on free tier — not a bug.** For production, use a paid always-on Render plan or ping `GET /health` every 10 minutes (e.g. UptimeRobot, cron-job.org).
 
+**Admin credentials**
+| Field | Value |
+|-------|-------|
+| **Email** | `admin@instantmechanic.com` |
+| **Password** | `password123` |
+
 ---
 
 ## Project overview
