@@ -1,59 +1,130 @@
-# Instant Mechanic — Live Operations Dashboard
+# Instant Mechanic — Live Operations Platform
 
-A full-stack monorepo for **Instant Mechanic**, a vehicle service company's live operations dashboard. Built for ops teams to monitor bookings, mechanics, revenue, and real-time status updates.
+A full-stack monorepo for **Instant Mechanic**, an on-demand vehicle service company. The app includes a public marketing site, a **customer mobile-first portal**, a **mechanic job view**, and an **admin operations console** with real-time booking updates via WebSockets.
 
-## Project Overview
+---
 
-This project delivers a production-quality SaaS-style dashboard for monitoring vehicle service operations in real time. The primary user is the **ADMIN/OPS** team, who can view aggregated stats, search and filter bookings, track mechanic availability, analyze trends, and watch booking statuses update live via WebSockets.
+## ⚠️ Live demo — Render free tier cold start
 
-The monorepo contains:
-- **`frontend/`** — React + Vite SPA (landing page at `/`, dashboard at `/app`) deployed to Vercel
-- **`backend/`** — Express REST API + Socket.IO deployed to Render
-- PostgreSQL database hosted on Neon (production) or Docker (local)
+The **backend is deployed on Render’s free tier**. After ~15 minutes of inactivity, the service spins down. The **first request after sleep can take up to ~1 minute** to respond while the container wakes up.
 
-## Tech Stack
+**What you’ll see:**
+
+- A **“Waking up the server”** overlay may appear on the frontend (usually after a few seconds of waiting).
+- Login, dashboard stats, and bookings may feel slow on the **first load**; subsequent requests are fast until the server sleeps again.
+
+**This is expected on free tier — not a bug.** For production, use a paid always-on Render plan or ping `GET /health` every 10 minutes (e.g. UptimeRobot, cron-job.org).
+
+---
+
+## Project overview
+
+| Surface | Audience | Purpose |
+|---------|----------|---------|
+| **Landing** (`/`) | Everyone | Marketing, trust content, sign-in links; shows personalized greeting when logged in |
+| **Customer portal** (`/app`) | Customers | Book services (multi-select), live job tracking, history, vehicles, account |
+| **Mechanic view** (`/app`) | Mechanics | Active job focus, quick status updates, assignment list |
+| **Ops dashboard** (`/app`) | Admin | Overview, analytics, bookings, mechanics fleet, customers, activity log |
+
+### Monorepo layout
+
+| Package | Stack | Deploy target |
+|---------|-------|---------------|
+| `frontend/` | React 19, Vite, TypeScript, Tailwind v4, TanStack Query, Recharts, Socket.IO | Vercel |
+| `backend/` | Express, Prisma, Socket.IO, Zod, JWT cookies | Render (free tier) |
+| Database | PostgreSQL | Neon (prod) / Docker (local) |
+
+---
+
+## Features
+
+### Admin operations console
+
+- **Overview** — Hero-weighted stats (today’s bookings, revenue), fleet metrics, live **activity log** (DB-backed, max 15 entries)
+- **Analytics** — Bookings/revenue over time, status pie chart, service category breakdown
+- **Bookings** — Search, filter, sort, CSV export, live row flash on WebSocket updates; mobile card layout
+- **Mechanics** — Fleet status, jobs completed, current booking; name search
+- **Customers** — Profiles, lifetime value, drill-down to customer detail; name search
+- **Booking detail** — Status workflow, mechanic assignment, pre/post-visit LLM summaries
+- **Simulate updates** — Admin button + `POST /api/demo/simulate` to advance random bookings for demos
+- **Dark mode** — Shared across marketing and app shells
+
+### Customer portal (consumer UI)
+
+- Mobile **bottom tab navigation**; desktop **top nav** in header
+- **Home** — Live step tracker + abstract map when a job is active; book CTA when idle
+- **Book** — Vehicle → multi-select services → schedule → confirm → celebration screen
+- **History** — Card list with AI post-visit summaries and “Book again”
+- **Vehicles** — Add/remove vehicles
+- **Account** — Profile and sign out
+- Brand title links to landing page
+
+### Mechanic view
+
+- **My Jobs** — Current job hero card with large status actions (on the way → in progress → completed)
+- Jobs completed count, other active assignments list
+- Mobile-friendly ops styling
+
+### Platform
+
+- **Auth** — JWT in `httpOnly` cookies; roles: `ADMIN`, `MECHANIC`, `CUSTOMER`
+- **Real-time** — `booking:updated` over Socket.IO; TanStack Query cache updates in place
+- **LLM** — Google Gemini pre/post-visit summaries with template fallback if API unavailable
+- **Concurrency** — Mechanic assignment with row locking; booking `version` field for optimistic updates
+- **API docs** — Swagger at `/api-docs`
+- **Cold-start UX** — Retries + “Waking up the server” overlay when backend is slow
+
+---
+
+## Tech stack
 
 | Layer | Technology |
 |-------|------------|
-| Runtime / Package Manager | **Bun** |
-| Frontend | React 19, Vite, TypeScript, Tailwind CSS v4, shadcn-style UI, react-router, TanStack Query, Recharts, Socket.IO client, Sonner |
-| Backend | Node.js, Express, TypeScript, Prisma ORM, Socket.IO, Zod validation |
-| Database | PostgreSQL (Neon free tier in prod, Docker locally) |
-| Auth | JWT in httpOnly cookies, role-based access control |
-| LLM | Google Gemini 3.6 Flash via `llmService.js` |
-| API Docs | Swagger/OpenAPI at `/api-docs` |
+| Runtime / PM | **Bun** workspaces |
+| Frontend | React 19, Vite 6, TypeScript, Tailwind CSS v4, Geist fonts, react-router 7, TanStack Query, Recharts, Socket.IO client, Sonner |
+| Backend | Express 4, TypeScript, Prisma 6, Socket.IO, Zod, bcrypt, express-rate-limit |
+| Database | PostgreSQL |
+| Auth | JWT (`httpOnly` cookie), RBAC middleware |
+| LLM | Google Gemini (`GEMINI_API_KEY`, default model `gemini-3.6-flash`) |
 | CI | GitHub Actions (lint + build) |
-| Deployment | Vercel (frontend), Render (backend), Neon (DB) |
+
+---
 
 ## Architecture
 
 ```mermaid
 flowchart LR
   subgraph Client
-    FE[React Frontend<br/>Vercel]
+    LP[Landing / Marketing]
+    CP[Customer Portal]
+    OPS[Admin + Mechanic Ops]
   end
 
-  subgraph Server
-    API[Express REST API]
+  subgraph Server["Render (free tier)"]
+    API[Express REST]
     WS[Socket.IO]
   end
 
   subgraph Data
-    DB[(PostgreSQL<br/>Neon)]
+    DB[(PostgreSQL / Neon)]
   end
 
-  FE -->|REST + cookies| API
-  FE <-->|WebSocket| WS
+  LP --> API
+  CP --> API
+  OPS --> API
+  CP <-->|booking:updated| WS
+  OPS <-->|booking:updated| WS
   API --> DB
-  WS --> API
-  API -->|LLM summaries| Gemini[Google Gemini API]
+  API --> Gemini[Gemini API]
 ```
 
-**WebSocket layer:** Socket.IO is attached to the same HTTP server as Express. When a booking status changes (`PATCH /api/bookings/:id/status`), the server broadcasts `booking:updated` to all connected clients. The frontend updates TanStack Query cache in place so tables and stats refresh without a page reload.
+**Status flow:** `PENDING` → `ASSIGNED` → `MECHANIC_ON_THE_WAY` → `IN_PROGRESS` → `COMPLETED` (or `CANCELLED`).
 
-**Double-booking safety:** Mechanic assignment uses a Prisma transaction with `SELECT ... FOR UPDATE` row-level locking on the mechanic row. Before assigning, the transaction checks for overlapping ACTIVE bookings (ASSIGNED, MECHANIC_ON_THE_WAY, IN_PROGRESS). Optimistic concurrency via a `version` field on Booking prevents lost updates when two status changes race. This is documented as a deliberate engineering choice for concurrency safety.
+**Assignable mechanics:** Not `OFFLINE` and no active booking in `ASSIGNED`, `MECHANIC_ON_THE_WAY`, or `IN_PROGRESS`.
 
-## Local Setup
+---
+
+## Local setup
 
 ### Prerequisites
 
@@ -64,6 +135,7 @@ flowchart LR
 
 ```bash
 git clone https://github.com/shamak24/Live-Dashboard-Task.git
+cd Live-Dashboard-Task
 bun install
 ```
 
@@ -73,18 +145,20 @@ bun install
 docker compose up -d
 ```
 
-### 3. Configure environment
+### 3. Environment files
 
 ```bash
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 ```
 
-Edit `backend/.env` with your `DATABASE_URL`. Default for Docker:
+**Backend** — set `DATABASE_URL` (Docker default):
 
-```
+```env
 DATABASE_URL="postgresql://user:password@localhost:5432/instant_mechanic?schema=public"
 ```
+
+**Frontend** — leave `VITE_API_URL` empty for local dev (Vite proxies `/api` and WebSocket to port 3001).
 
 ### 4. Database migrate + seed
 
@@ -95,160 +169,174 @@ bun run db:push
 bun run db:seed
 ```
 
-### 5. Run development servers
+### 5. Run dev servers
 
-From the monorepo root:
-
-```bash
-bun run dev:backend   # http://localhost:3001
-bun run dev:frontend  # http://localhost:5173
-```
-
-Or both:
+From monorepo root:
 
 ```bash
-bun run dev
+bun run dev          # frontend + backend
+# or separately:
+bun run dev:backend  # http://localhost:3001
+bun run dev:frontend # http://localhost:5173
 ```
 
 ### 6. Open the app
 
 | URL | Purpose |
 |-----|---------|
-| http://localhost:5173 | Public landing page |
-| http://localhost:5173/login | Sign in (all roles) |
-| http://localhost:5173/signup | Customer / mechanic registration |
-| http://localhost:5173/app | Operations dashboard (after login) |
+| http://localhost:5173 | Landing page |
+| http://localhost:5173/login | Sign in (Customer/Mechanic or Admin tab) |
+| http://localhost:5173/login?mode=admin | Admin sign-in directly |
+| http://localhost:5173/signup | Register as customer or mechanic |
+| http://localhost:5173/app | App home (role-based routing) |
 
-## Demo accounts & login credentials
+---
 
-Run `bun run db:seed` in `backend/` before using these accounts.
+## Demo accounts
 
-### Admin (operations dashboard)
+Run `bun run db:seed` in `backend/` before using seeded accounts.
 
-Use this account to access the full ops console: Overview, Analytics, Bookings, Mechanics, Customers, and live simulation.
+### Admin (full ops dashboard)
 
 | Field | Value |
 |-------|-------|
-| **Username (email)** | `admin@instantmechanic.com` |
+| **Email** | `admin@instantmechanic.com` |
 | **Password** | `password123` |
 
-Admin accounts are **seeded only** — use **Admin** on the sign-in page (`/login`). After sign-in, admins are routed to `/app` (operations dashboard).
+Use the **Admin** tab on `/login` or `/login?mode=admin`. Routes to Overview, Analytics, Bookings, Mechanics, Customers.
 
 ### Customer & mechanic
 
-- **Sign up:** http://localhost:5173/signup — choose “I'm a customer” or “I'm a mechanic”.
-- **Sign in:** http://localhost:5173/login — use the **Customer / Mechanic** tab.
-- **Seeded users:** Any customer or mechanic email created by the seed script works with password **`password123`** (emails are random Faker addresses; only the admin email is fixed).
+- **Sign up:** `/signup` — choose customer or mechanic.
+- **Sign in:** `/login` — Customer / Mechanic tab.
+- **Seeded users:** Faker-generated emails from seed, password **`password123`** for all seeded non-admin users.
 
-### Admin sign-in
+---
 
-- http://localhost:5173/login — select the **Admin** tab, or open http://localhost:5173/login?mode=admin directly.
+## App routes (frontend)
 
+### Public
 
-## Environment Variables
+| Path | Page |
+|------|------|
+| `/` | Landing (personalized if signed in) |
+| `/login` | Login |
+| `/signup` | Registration |
+
+### Authenticated (`/app`)
+
+| Path | Role | Description |
+|------|------|-------------|
+| `/app` | All | Home — Overview (admin), My Jobs (mechanic), live tracking (customer) |
+| `/app/analytics` | Admin | Charts |
+| `/app/bookings` | Admin, Mechanic | Bookings table / assignments |
+| `/app/bookings/:id` | All* | Booking detail + status actions |
+| `/app/mechanics` | Admin | Fleet list |
+| `/app/mechanics/:id` | Admin, Mechanic† | Mechanic profile |
+| `/app/customers` | Admin | Customer list |
+| `/app/customers/:id` | Admin | Customer profile |
+| `/app/book` | Customer | Book a service (multi-service) |
+| `/app/history` | Customer | Past bookings |
+| `/app/vehicles` | Customer | Vehicle management |
+| `/app/account` | Customer | Account settings |
+
+\*Customers only see their own bookings; mechanics only assigned jobs.  
+†Mechanics can only view their own mechanic profile.
+
+---
+
+## API overview
+
+**Local docs:** http://localhost:3001/api-docs  
+**Production:** `https://<your-render-app>.onrender.com/api-docs`
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/health` | — | Health check (use for uptime pings) |
+| POST | `/api/auth/login` | — | Login, sets cookie |
+| POST | `/api/auth/register` | — | Register customer/mechanic |
+| POST | `/api/auth/logout` | — | Clear session |
+| GET | `/api/auth/me` | ✓ | Current user |
+| GET | `/api/dashboard` | Admin | Dashboard stats |
+| GET | `/api/dashboard/activity-logs` | Admin | Recent activity (max 15) |
+| GET | `/api/dashboard/charts/*` | Admin | Analytics chart data |
+| GET | `/api/bookings` | ✓ | List bookings (scoped by role) |
+| POST | `/api/bookings` | Customer | Create booking(s) |
+| GET | `/api/bookings/:id` | ✓ | Booking detail |
+| PATCH | `/api/bookings/:id/status` | Admin, Mechanic | Update status (+ WebSocket) |
+| POST | `/api/bookings/:id/retry-summary` | Admin | Regenerate LLM summary |
+| GET | `/api/mechanics` | Admin, Mechanic | List mechanics (`?available=true` for assignable) |
+| GET | `/api/mechanics/:id` | Admin, Mechanic | Mechanic detail |
+| GET | `/api/customers` | Admin | List customers |
+| GET | `/api/customers/:id` | Admin | Customer detail |
+| GET | `/api/customers/me` | Customer | Own profile |
+| PATCH | `/api/customers/me` | Customer | Update profile |
+| POST/DELETE | `/api/customers/me/vehicles` | Customer | Manage vehicles |
+| GET | `/api/service-categories` | ✓ | Service categories + prices |
+| POST | `/api/demo/simulate` | Admin* | Advance random bookings for demo |
+
+\*Simulate endpoint is mounted without role guard in code but is intended for admin demo use from the dashboard button.
+
+---
+
+## Environment variables
 
 ### Backend (`backend/.env`)
 
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string (Neon or local) |
-| `JWT_SECRET` | Secret for signing JWT tokens |
-| `JWT_EXPIRES_IN` | Token expiry (e.g. `7d`) |
-| `PORT` | Server port (default `3001`) |
-| `NODE_ENV` | `development` or `production` |
-| `FRONTEND_URL` | Vercel frontend URL for CORS (e.g. `http://localhost:5173`) |
-| `GEMINI_API_KEY` | Google AI Studio / Gemini API key for LLM summaries |
-| `GEMINI_MODEL` | Gemini model ID (default: `gemini-3.6-flash`) |
-| `API_URL` | Public API URL for Swagger docs |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `JWT_SECRET` | Yes | Long random secret for JWT signing |
+| `JWT_EXPIRES_IN` | No | Default `7d` |
+| `PORT` | No | Default `3001` |
+| `NODE_ENV` | No | `development` or `production` |
+| `FRONTEND_URL` | Prod | Vercel URL for CORS (e.g. `https://your-app.vercel.app`) |
+| `GEMINI_API_KEY` | No | Gemini API key for LLM summaries |
+| `GEMINI_MODEL` | No | Default `gemini-3.6-flash` |
+| `DEMO_AUTO_SIMULATE` | No | `true` to auto-advance bookings in dev |
+| `DEMO_AUTO_SIMULATE_MS` | No | Interval ms (default 30000) |
 
 ### Frontend (`frontend/.env`)
 
-| Variable | Description |
-|----------|-------------|
-| `VITE_API_URL` | Backend API URL (e.g. `http://localhost:3001` or Render URL) |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_API_URL` | Prod | Render backend URL (e.g. `https://your-app.onrender.com`). Leave empty locally. |
 
-## API Documentation
-
-- **Local:** http://localhost:3001/api-docs
-- **Production:** `https://<your-render-app>.onrender.com/api-docs`
-
-### Major Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Health check for uptime pinging |
-| POST | `/api/auth/login` | Login (sets httpOnly cookie) |
-| POST | `/api/auth/register` | Register new user |
-| GET | `/api/dashboard` | Aggregated dashboard stats |
-| GET | `/api/bookings` | Paginated, filterable bookings list |
-| GET | `/api/bookings/:id` | Booking detail with LLM summaries |
-| PATCH | `/api/bookings/:id/status` | Update status (WebSocket broadcast) |
-| GET | `/api/mechanics` | Mechanics list with current booking |
-| GET | `/api/mechanics/:id` | Mechanic detail |
-| GET | `/api/customers` | Customers list (admin) |
-| GET | `/api/dashboard/charts/*` | Chart data for Analytics page |
-| POST | `/api/demo/simulate` | Advance random bookings for live demo |
+---
 
 ## Deployment
 
 ### Frontend (Vercel)
 
-1. Connect the GitHub repo to Vercel
-2. Set root directory to `frontend`
-3. Build command: `bun run build`
-4. Set `VITE_API_URL` to your Render backend URL
+1. Connect repo; set **Root Directory** to `frontend`
+2. Build: `bun run build`
+3. Set `VITE_API_URL` to your Render backend URL (no trailing slash)
 
-### Backend (Render)
+### Backend (Render free tier)
 
-1. Create a Web Service on Render
-2. Root directory: `backend`
-3. Build: `bun install && bun run db:generate && bun run build`
-4. Start: `bun run start`
-5. Add environment variables from the table above
-6. Connect Neon `DATABASE_URL`
+1. New **Web Service**; root `backend`
+2. Build: `bun install && bun run db:generate && bun run build`
+3. Start: `bun run start`
+4. Add env vars (`DATABASE_URL`, `JWT_SECRET`, `FRONTEND_URL`, optional `GEMINI_API_KEY`)
+5. **Expect cold starts** — see warning at top of this README
 
 ### Database (Neon)
 
-1. Create a free Neon project
-2. Copy the connection string to Render's `DATABASE_URL`
-3. Run migrations: `bun run db:push` (from CI or manually)
+1. Create Neon project; copy connection string to Render `DATABASE_URL`
+2. Apply schema: `cd backend && bun run db:push`
+3. Seed (optional): `bun run db:seed`
 
-### Render Cold-Start Trade-off
+### Keep backend warm (optional)
 
-Render's free tier spins down after ~15 minutes of inactivity. The next request can take **30–50 seconds** to wake the server.
+Free tier sleeps after inactivity. To reduce **~1 minute** wake-up delays:
 
-**Mitigations implemented:**
+1. Use [UptimeRobot](https://uptimerobot.com) or [cron-job.org](https://cron-job.org)
+2. Ping `GET https://<your-app>.onrender.com/health` every **10 minutes**
+3. Or upgrade Render to a paid always-on instance
 
-1. **Backend:** `GET /health` returns `{ status: "ok" }` instantly once warm — designed for external uptime pingers.
-2. **Frontend:** API fetch wrapper with timeout, retry/backoff, and a friendly **"Waking up the server"** overlay after 3 seconds on cold start instead of a blank hang.
-3. **Production recommendation:** Use a paid always-on Render instance, or configure a free external cron (e.g. [cron-job.org](https://cron-job.org) or UptimeRobot) to ping `/health` every 10 minutes.
+The frontend already shows a friendly **“Waking up the server”** state and retries slow requests.
 
-**Optional keep-alive setup:**
-
-1. Sign up for UptimeRobot or cron-job.org (free)
-2. Create a monitor/cron hitting `https://<your-app>.onrender.com/health` every 10 minutes
-3. This keeps the instance warm but depends on an external service outside the repo
-
-## AI Usage
-
-| Tool | Used For | Personally Modified |
-|------|----------|---------------------|
-| Cursor / Claude | Scaffolded monorepo structure, Prisma schema, Express routes, React pages, seed script, README | WebSocket broadcast + TanStack Query cache integration, double-booking transaction with `FOR UPDATE`, cold-start fetch wrapper and waking-up UI |
-| Google Gemini API | Pre/post-visit booking summaries via `llmService.js` (`gemini-3.6-flash`) | Prompt structure, retries on 503, template fallback when API unavailable |
-| — | — | Auth RBAC middleware, optimistic concurrency `version` field, CSV export, dark mode, demo simulate button |
-
-**Honest breakdown:** AI assisted with scaffolding and boilerplate (component structure, route patterns, seed data generation). The concurrency-safe mechanic assignment, real-time cache updates, and cold-start UX were implemented and tested manually. LLM integration includes template fallbacks so the app works without API keys.
-
-## Bonus Features Included
-
-- Swagger/OpenAPI docs at `/api-docs`
-- Dark mode toggle
-- Booking detail + mechanic detail pages
-- CSV export from bookings table
-- API rate limiting (200 req / 15 min)
-- Docker Compose for local PostgreSQL
-- GitHub Actions CI (lint + build)
-- Live demo: "Simulate Live Updates" button + `POST /api/demo/simulate`
+---
 
 ## Scripts
 
@@ -256,10 +344,34 @@ Render's free tier spins down after ~15 minutes of inactivity. The next request 
 |---------|-------------|
 | `bun install` | Install all workspace dependencies |
 | `bun run dev` | Run frontend + backend in dev mode |
-| `bun run build` | Build both packages |
-| `bun run db:migrate` | Run Prisma migrations |
-| `bun run db:seed` | Seed database with fake data |
-| `bun run --filter backend simulate` | Advance random bookings (CLI) |
+| `bun run dev:frontend` | Vite dev server only |
+| `bun run dev:backend` | Express + Socket.IO with watch |
+| `bun run build` | Production build (both packages) |
+| `bun run db:migrate` | Prisma migrate dev |
+| `bun run db:seed` | Seed fake customers, mechanics, bookings |
+| `cd backend && bun run simulate` | CLI: advance random bookings |
+
+---
+
+## Design notes
+
+- **Ops UI** — Dense, flat, scan-fast console for admin/mechanic (unified status colors, tabular numbers, mobile bottom nav for admin)
+- **Customer UI** — Warm, spacious, mobile-first portal (separate from ops styling)
+- **Brand** — Geist / Geist Mono, primary `#2F5DFF`, shared status color tokens across badges and charts
+
+---
+
+## AI usage (transparency)
+
+| Tool | Used for |
+|------|----------|
+| Cursor / Claude | Scaffold, routes, components, seed data, README drafts |
+| Google Gemini | Pre/post-visit booking summaries |
+| Manual implementation | WebSocket + Query cache sync, mechanic `FOR UPDATE` assignment, cold-start UX, customer portal, activity log, multi-service booking flow |
+
+LLM summaries fall back to templates when `GEMINI_API_KEY` is missing or the API errors.
+
+---
 
 ## License
 
