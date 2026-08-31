@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Generate Prisma client
+        run: bun run --filter backend db:generate
+
+      - name: Lint frontend
+        run: bun run --filter frontend lint
+
+      - name: Build backend
+        run: bun run --filter backend build
+
+      - name: Build frontend
+        run: bun run --filter frontend build

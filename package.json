@@ -1,0 +1,14 @@
+{
+  "name": "instant-mechanic-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["frontend", "backend"],
+  "scripts": {
+    "dev": "bun run --filter '*' dev",
+    "dev:backend": "bun run --filter backend dev",
+    "dev:frontend": "bun run --filter frontend dev",
+    "build": "bun run --filter '*' build",
+    "db:migrate": "bun run --filter backend db:migrate",
+    "db:seed": "bun run --filter backend db:seed"
+  }
+}
