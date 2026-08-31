@@ -29,7 +29,7 @@ export function SectionLoader({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground",
+        "flex flex-col items-center justify-center gap-3 py-8 text-muted-foreground",
         className
       )}
     >
@@ -82,11 +82,11 @@ export function EmptyState({
   description?: string;
 }) {
   return (
-    <div className="animate-fade-in rounded-lg border border-dashed border-border bg-muted/20 p-12 text-center">
+    <div className="rounded-[12px] border border-dashed border-border bg-muted/20 p-8 text-center">
       <Inbox className="mx-auto h-10 w-10 text-muted-foreground/60" />
-      <p className="mt-3 font-medium">{title}</p>
+      <p className="mt-3 text-body font-medium">{title}</p>
       {description && (
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        <p className="mt-1 text-body text-muted-foreground">{description}</p>
       )}
     </div>
   );

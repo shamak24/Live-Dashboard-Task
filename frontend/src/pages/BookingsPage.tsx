@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { paths } from "@/lib/paths";
 import { Search, Download } from "lucide-react";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import type { PaginatedBookings, Booking, MechanicListItem } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
+import { OpsBookingMobileCard } from "@/components/ops/OpsBookingMobileCard";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ import { TableSkeleton } from "@/components/ui/loading-skeletons";
 import { ErrorState, EmptyState, InlineLoader } from "@/components/ui/section-states";
 import { useSocket } from "@/contexts/SocketContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { getStatusLabel } from "@/lib/statusColors";
 
 const STATUSES = [
   "PENDING",
@@ -62,6 +64,10 @@ function buildBookingParams(
 export function BookingsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
+
+  if (user?.role === "CUSTOMER") {
+    return <Navigate to={paths.customerHistory} replace />;
+  }
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -228,6 +234,7 @@ export function BookingsPage() {
               <Button
                 variant="outline"
                 size="sm"
+                className="w-full sm:w-auto min-h-[40px]"
                 onClick={() => exportCsv()}
                 loading={exporting}
                 loadingText="Exporting..."
@@ -241,53 +248,51 @@ export function BookingsPage() {
         }
       />
 
-      <div className="space-y-3">
-        <div className="ops-toolbar">
-          <div className="relative min-w-[200px] flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              className="pl-9 transition-shadow focus:shadow-sm"
-              placeholder="Search by customer or booking ID..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                resetPage();
-              }}
-            />
-          </div>
-          <select
-            className="h-9 rounded-[8px] border border-border bg-card px-3 text-body"
-            value={status}
+      <div className="ops-toolbar">
+        <div className="relative min-w-[200px] flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="pl-9"
+            placeholder="Search by customer or booking ID..."
+            value={search}
             onChange={(e) => {
-              setStatus(e.target.value);
+              setSearch(e.target.value);
               resetPage();
             }}
-          >
-            <option value="">All statuses</option>
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
-            ))}
-          </select>
-          <select
-            className="h-9 rounded-[8px] border border-border bg-card px-3 text-body"
-            value={`${sortBy}-${sortOrder}`}
-            onChange={(e) => {
-              const [sb, so] = e.target.value.split("-");
-              setSortBy(sb);
-              setSortOrder(so);
-            }}
-          >
-            <option value="createdAt-desc">Newest first</option>
-            <option value="createdAt-asc">Oldest first</option>
-            <option value="scheduledAt-desc">Scheduled (latest)</option>
-            <option value="amount-desc">Amount (high)</option>
-            <option value="amount-asc">Amount (low)</option>
-          </select>
+          />
         </div>
+        <select
+          className="ops-select"
+          value={status}
+          onChange={(e) => {
+            setStatus(e.target.value);
+            resetPage();
+          }}
+        >
+          <option value="">All statuses</option>
+          {STATUSES.map((s) => (
+            <option key={s} value={s}>{getStatusLabel(s)}</option>
+          ))}
+        </select>
+        <select
+          className="ops-select"
+          value={`${sortBy}-${sortOrder}`}
+          onChange={(e) => {
+            const [sb, so] = e.target.value.split("-");
+            setSortBy(sb);
+            setSortOrder(so);
+          }}
+        >
+          <option value="createdAt-desc">Newest first</option>
+          <option value="createdAt-asc">Oldest first</option>
+          <option value="scheduledAt-desc">Scheduled (latest)</option>
+          <option value="amount-desc">Amount (high)</option>
+          <option value="amount-asc">Amount (low)</option>
+        </select>
 
         {isAdmin && (
-          <div className="ops-toolbar">
-            <span className="text-meta">Filters</span>
+          <>
+            <span className="ops-toolbar-divider hidden sm:block" aria-hidden />
             <Input
               type="date"
               className="h-9 w-auto"
@@ -309,7 +314,7 @@ export function BookingsPage() {
               aria-label="End date"
             />
             <select
-              className="h-9 rounded-[8px] border border-border bg-card px-3 text-body"
+              className="ops-select"
               value={mechanicId}
               onChange={(e) => {
                 setMechanicId(e.target.value);
@@ -322,7 +327,7 @@ export function BookingsPage() {
               ))}
             </select>
             <select
-              className="h-9 rounded-[8px] border border-border bg-card px-3 text-body"
+              className="ops-select"
               value={serviceCategoryId}
               onChange={(e) => {
                 setServiceCategoryId(e.target.value);
@@ -339,7 +344,7 @@ export function BookingsPage() {
                 Clear filters
               </Button>
             )}
-          </div>
+          </>
         )}
       </div>
 
@@ -360,31 +365,11 @@ export function BookingsPage() {
           <>
             <div className="space-y-3 md:hidden">
               {(data?.data ?? []).map((booking) => (
-                <div
+                <OpsBookingMobileCard
                   key={booking.id}
-                  className={cn(
-                    "ops-panel space-y-2 p-4",
-                    flashIds.has(booking.id) && "animate-flash-update"
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <Link
-                      to={paths.booking(booking.id)}
-                      className="font-medium text-foreground underline-offset-4 hover:underline"
-                    >
-                      {booking.customer.user.name}
-                    </Link>
-                    <StatusBadge status={booking.status} />
-                  </div>
-                  <p className="text-body">{booking.serviceCategory.name}</p>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-meta text-muted-foreground">
-                    <span className="font-mono tabular-nums">
-                      {formatCurrency(booking.amount)}
-                    </span>
-                    <span>{formatDate(booking.scheduledAt)}</span>
-                    <span>{booking.mechanic?.user.name ?? "No mechanic"}</span>
-                  </div>
-                </div>
+                  booking={booking}
+                  flash={flashIds.has(booking.id)}
+                />
               ))}
             </div>
 
@@ -413,7 +398,7 @@ export function BookingsPage() {
                         flashIds.has(booking.id) && "animate-flash-update"
                       )}
                     >
-                      <td className="px-4 py-3">
+                      <td>
                         <Link
                           to={paths.booking(booking.id)}
                           className="font-medium text-foreground underline-offset-4 hover:underline"
@@ -421,15 +406,15 @@ export function BookingsPage() {
                           {booking.customer.user.name}
                         </Link>
                       </td>
-                      <td className="px-4 py-3">{booking.serviceCategory.name}</td>
-                      <td className="px-4 py-3">
+                      <td>{booking.serviceCategory.name}</td>
+                      <td>
                         <StatusBadge status={booking.status} />
                       </td>
                       <td className="num">{formatCurrency(booking.amount)}</td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                      <td className="text-muted-foreground">
                         {formatDate(booking.scheduledAt)}
                       </td>
-                      <td className="px-4 py-3">
+                      <td>
                         {booking.mechanic?.user.name ?? "—"}
                       </td>
                     </tr>
@@ -439,14 +424,14 @@ export function BookingsPage() {
             </div>
 
             {data && data.pagination.totalPages > 1 && (
-              <div className="mt-4 flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-body text-muted-foreground text-center sm:text-left">
                   Page {data.pagination.page} of {data.pagination.totalPages} ({data.pagination.total} total)
                 </p>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
-                    size="sm"
+                    className="flex-1 sm:flex-none min-h-[40px]"
                     disabled={page <= 1 || isFetching}
                     onClick={() => setPage((p) => p - 1)}
                   >
@@ -454,7 +439,7 @@ export function BookingsPage() {
                   </Button>
                   <Button
                     variant="outline"
-                    size="sm"
+                    className="flex-1 sm:flex-none min-h-[40px]"
                     disabled={page >= data.pagination.totalPages || isFetching}
                     onClick={() => setPage((p) => p + 1)}
                   >

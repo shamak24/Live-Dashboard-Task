@@ -1,7 +1,8 @@
-import { Link, Navigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { CalendarCheck, ClipboardList, Radio } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { paths } from "@/lib/paths";
+import { getDashboardLabel, getLandingGreeting } from "@/lib/landingGreeting";
 import { Button } from "@/components/ui/button";
 import { RevealSection } from "@/components/landing/RevealSection";
 import { DispatchMapVisual } from "@/components/landing/DispatchMapVisual";
@@ -75,10 +76,7 @@ function LiveDispatchStack() {
 
 export function LandingPage() {
   const { user, loading } = useAuth();
-
-  if (!loading && user) {
-    return <Navigate to={paths.home} replace />;
-  }
+  const signedIn = !loading && user;
 
   return (
     <main className="landing-page">
@@ -87,34 +85,63 @@ export function LandingPage() {
         <div className="mx-auto max-w-6xl px-4 py-20 md:px-6 md:py-28">
           <div className="grid gap-14 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
             <div className="space-y-8">
-              <p className="text-body font-medium text-primary">
-                Mobile mechanics, dispatched like a fleet
-              </p>
+              {signedIn ? (
+                <p className="text-section font-semibold text-foreground">
+                  {getLandingGreeting(user!)}
+                </p>
+              ) : (
+                <p className="text-body font-medium text-primary">
+                  Mobile mechanics, dispatched like a fleet
+                </p>
+              )}
               <h1 className="landing-display font-semibold tracking-tight text-foreground">
-                A mechanic at your driveway, tracked live from request to completion.
+                {signedIn
+                  ? "Welcome back — your dispatch hub is ready."
+                  : "A mechanic at your driveway, tracked live from request to completion."}
               </h1>
               <p className="max-w-xl text-body text-muted-foreground">
-                Instant Mechanic connects customers who need service at home or work with
-                vetted mechanics in their area. Book oil changes, brakes, tires, and more,
-                then follow each job as it moves through dispatch.
+                {signedIn
+                  ? user!.role === "ADMIN"
+                    ? "Review bookings, fleet status, and live updates from the operations dashboard."
+                    : user!.role === "MECHANIC"
+                      ? "See your assigned jobs and update status as you work."
+                      : "Track your service, book again, or manage your vehicles from your portal."
+                  : "Instant Mechanic connects customers who need service at home or work with vetted mechanics in their area. Book oil changes, brakes, tires, and more, then follow each job as it moves through dispatch."}
               </p>
               <div className="flex flex-wrap gap-3">
-                <Button asChild>
-                  <Link to={`${paths.signup}?role=customer`}>Book a service</Link>
-                </Button>
-                <Button variant="outline" asChild>
-                  <Link to={`${paths.signup}?role=mechanic`}>Join as a mechanic</Link>
-                </Button>
+                {signedIn ? (
+                  <>
+                    <Button asChild>
+                      <Link to={paths.home}>{getDashboardLabel(user!.role)}</Link>
+                    </Button>
+                    {user!.role === "CUSTOMER" && (
+                      <Button variant="outline" asChild>
+                        <Link to={paths.customerBook}>Book a service</Link>
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Button asChild>
+                      <Link to={`${paths.signup}?role=customer`}>Book a service</Link>
+                    </Button>
+                    <Button variant="outline" asChild>
+                      <Link to={`${paths.signup}?role=mechanic`}>Join as a mechanic</Link>
+                    </Button>
+                  </>
+                )}
               </div>
-              <p className="text-meta">
-                Already have an account?{" "}
-                <Link
-                  to={paths.login}
-                  className="font-medium text-foreground underline-offset-4 hover:underline"
-                >
-                  Sign in
-                </Link>
-              </p>
+              {!signedIn && (
+                <p className="text-meta">
+                  Already have an account?{" "}
+                  <Link
+                    to={paths.login}
+                    className="font-medium text-foreground underline-offset-4 hover:underline"
+                  >
+                    Sign in
+                  </Link>
+                </p>
+              )}
             </div>
             <LiveDispatchStack />
           </div>
@@ -236,9 +263,15 @@ export function LandingPage() {
                   Pick your vehicle, choose a service, and schedule a visit. Track status from
                   pending through completion without calling the shop for updates.
                 </p>
-                <Button variant="outline" size="sm" asChild>
-                  <Link to={`${paths.signup}?role=customer`}>Create customer account</Link>
-                </Button>
+                {signedIn && user!.role === "CUSTOMER" ? (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to={paths.customerBook}>Book a service</Link>
+                  </Button>
+                ) : !signedIn ? (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to={`${paths.signup}?role=customer`}>Create customer account</Link>
+                  </Button>
+                ) : null}
               </div>
               <div className="ops-panel space-y-4 p-6">
                 <h3 className="text-body font-semibold">For mechanics</h3>
@@ -246,9 +279,15 @@ export function LandingPage() {
                   See assigned jobs, update status as you head out and finish work, and keep
                   your availability accurate so dispatch does not double-book you.
                 </p>
-                <Button variant="outline" size="sm" asChild>
-                  <Link to={`${paths.signup}?role=mechanic`}>Apply as a mechanic</Link>
-                </Button>
+                {signedIn && user!.role === "MECHANIC" ? (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to={paths.home}>View my jobs</Link>
+                  </Button>
+                ) : !signedIn ? (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to={`${paths.signup}?role=mechanic`}>Apply as a mechanic</Link>
+                  </Button>
+                ) : null}
               </div>
             </div>
           </div>
@@ -262,27 +301,41 @@ export function LandingPage() {
             <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
               <div>
                 <h2 className="text-section font-semibold text-background">
-                  Ready to book or join the network?
+                  {signedIn
+                    ? getLandingGreeting(user!)
+                    : "Ready to book or join the network?"}
                 </h2>
                 <p className="mt-2 max-w-lg text-body text-background/70">
-                  Create a customer account to schedule service, or sign up as a mechanic to
-                  receive assigned jobs through the same live dispatch system.
+                  {signedIn
+                    ? "Jump back into your dashboard to manage bookings and live updates."
+                    : "Create a customer account to schedule service, or sign up as a mechanic to receive assigned jobs through the same live dispatch system."}
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
-                <Button
-                  asChild
-                  className="bg-primary text-primary-foreground hover:opacity-90"
-                >
-                  <Link to={`${paths.signup}?role=customer`}>Book a service</Link>
-                </Button>
-                <Button
-                  variant="outline"
-                  asChild
-                  className="border-background/30 bg-transparent text-background hover:bg-background/10"
-                >
-                  <Link to={paths.login}>Sign in</Link>
-                </Button>
+                {signedIn ? (
+                  <Button
+                    asChild
+                    className="bg-primary text-primary-foreground hover:opacity-90"
+                  >
+                    <Link to={paths.home}>{getDashboardLabel(user!.role)}</Link>
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      asChild
+                      className="bg-primary text-primary-foreground hover:opacity-90"
+                    >
+                      <Link to={`${paths.signup}?role=customer`}>Book a service</Link>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      asChild
+                      className="border-background/30 bg-transparent text-background hover:bg-background/10"
+                    >
+                      <Link to={paths.login}>Sign in</Link>
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </div>

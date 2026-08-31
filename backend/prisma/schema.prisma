@@ -107,3 +107,11 @@ model Booking {
   @@index([createdAt])
   @@index([scheduledAt])
 }
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

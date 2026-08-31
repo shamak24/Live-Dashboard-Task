@@ -35,11 +35,23 @@ const statusUpdateSchema = z.object({
   version: z.number().int().optional(),
 });
 
-const createBookingSchema = z.object({
-  vehicleId: z.string().min(1),
-  serviceCategoryId: z.string().min(1),
-  scheduledAt: z.coerce.date(),
+const vehicleInputSchema = z.object({
+  make: z.string().trim().min(1).max(60),
+  model: z.string().trim().min(1).max(60),
+  year: z.coerce.number().int().min(1980).max(new Date().getFullYear() + 1),
+  plate: z.string().trim().min(1).max(20),
 });
+
+const createBookingSchema = z
+  .object({
+    vehicleId: z.string().min(1).optional(),
+    vehicle: vehicleInputSchema.optional(),
+    serviceCategoryId: z.string().min(1),
+    scheduledAt: z.coerce.date(),
+  })
+  .refine((data) => data.vehicleId || data.vehicle, {
+    message: "Select a vehicle or enter vehicle details",
+  });
 
 /**
  * @openapi
@@ -146,6 +158,7 @@ router.post(
       const booking = await createBooking({
         customerId: customer.id,
         vehicleId: body.vehicleId,
+        vehicle: body.vehicle,
         serviceCategoryId: body.serviceCategoryId,
         scheduledAt: body.scheduledAt,
       });

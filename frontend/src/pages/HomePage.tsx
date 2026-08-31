@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { OverviewPage } from "@/pages/OverviewPage";
 import { MechanicHomePage } from "@/pages/MechanicHomePage";
-import { CustomerHomePage } from "@/pages/CustomerHomePage";
+import { CustomerPortalHome } from "@/pages/customer/CustomerPortalHome";
 
 export function HomePage() {
   const { user } = useAuth();
@@ -11,7 +11,7 @@ export function HomePage() {
   }
 
   if (user?.role === "CUSTOMER") {
-    return <CustomerHomePage />;
+    return <CustomerPortalHome />;
   }
 
   return <OverviewPage />;

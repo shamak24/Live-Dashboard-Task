@@ -6,6 +6,10 @@ import {
   generatePreVisitSummary,
 } from "../services/llmService.js";
 import { MECHANIC_ACTIVE_BOOKING_STATUSES } from "../services/mechanicService.js";
+import {
+  logBookingCreated,
+  logBookingStatusChange,
+} from "../services/activityLogHelpers.js";
 
 const TRANSACTION_OPTIONS = {
   maxWait: 10_000,
@@ -70,12 +74,37 @@ export async function getBookingById(id: string) {
 
 export async function createBooking(input: {
   customerId: string;
-  vehicleId: string;
+  vehicleId?: string;
+  vehicle?: {
+    make: string;
+    model: string;
+    year: number;
+    plate: string;
+  };
   serviceCategoryId: string;
   scheduledAt: Date;
 }) {
+  let vehicleId = input.vehicleId;
+
+  if (!vehicleId && input.vehicle) {
+    const createdVehicle = await prisma.vehicle.create({
+      data: {
+        customerId: input.customerId,
+        make: input.vehicle.make.trim(),
+        model: input.vehicle.model.trim(),
+        year: input.vehicle.year,
+        plate: input.vehicle.plate.trim().toUpperCase(),
+      },
+    });
+    vehicleId = createdVehicle.id;
+  }
+
+  if (!vehicleId) {
+    throw createError("A vehicle is required to book a service", 400);
+  }
+
   const vehicle = await prisma.vehicle.findFirst({
-    where: { id: input.vehicleId, customerId: input.customerId },
+    where: { id: vehicleId, customerId: input.customerId },
   });
   if (!vehicle) {
     throw createError("Vehicle not found for this customer", 404);
@@ -92,10 +121,10 @@ export async function createBooking(input: {
     throw createError("Scheduled time must be in the future", 400);
   }
 
-  return prisma.booking.create({
+  const created = await prisma.booking.create({
     data: {
       customerId: input.customerId,
-      vehicleId: input.vehicleId,
+      vehicleId: vehicle.id,
       serviceCategoryId: input.serviceCategoryId,
       scheduledAt: input.scheduledAt,
       amount: category.basePrice,
@@ -103,6 +132,10 @@ export async function createBooking(input: {
     },
     include: bookingInclude,
   });
+
+  logBookingCreated(created);
+
+  return created;
 }
 
 function isPrismaError(
@@ -249,7 +282,8 @@ export async function updateBookingStatus(
   bookingId: string,
   newStatus: BookingStatus,
   mechanicId?: string,
-  expectedVersion?: number
+  expectedVersion?: number,
+  logOptions?: { source?: "demo" | "user" }
 ) {
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
@@ -275,7 +309,9 @@ export async function updateBookingStatus(
       mechanicId,
       expectedVersion ?? booking.version
     );
-    return applyLlmSummaries(bookingId, assigned, newStatus);
+    const withSummaries = await applyLlmSummaries(bookingId, assigned, newStatus);
+    logBookingStatusChange(withSummaries, booking.status, logOptions);
+    return withSummaries;
   }
 
   try {
@@ -347,6 +383,8 @@ export async function updateBookingStatus(
 
   const updated = await getBookingById(bookingId);
   if (!updated) throw createError("Booking not found", 404);
+
+  logBookingStatusChange(updated, booking.status, logOptions);
 
   return applyLlmSummaries(bookingId, updated, newStatus);
 }

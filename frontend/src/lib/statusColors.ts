@@ -57,3 +57,36 @@ export function getStatusBadgeClass(status: string): string {
     "bg-muted text-muted-foreground border border-border"
   );
 }
+
+/** Fleet mechanic status — uses same CSS status tokens for ops consistency */
+export const MECHANIC_FLEET_STATUS = {
+  AVAILABLE: {
+    label: "Available",
+    badge:
+      "bg-[color-mix(in_srgb,var(--status-completed)_12%,transparent)] text-[var(--status-completed)] border border-[color-mix(in_srgb,var(--status-completed)_28%,transparent)]",
+  },
+  ON_JOB: {
+    label: "On job",
+    badge:
+      "bg-[color-mix(in_srgb,var(--status-assigned)_12%,transparent)] text-[var(--status-assigned)] border border-[color-mix(in_srgb,var(--status-assigned)_28%,transparent)]",
+  },
+  OFFLINE: {
+    label: "Offline",
+    badge:
+      "bg-[color-mix(in_srgb,var(--status-pending)_14%,transparent)] text-[var(--status-pending)] border border-[color-mix(in_srgb,var(--status-pending)_30%,transparent)]",
+  },
+} as const;
+
+export function getMechanicFleetLabel(status: string): string {
+  return (
+    MECHANIC_FLEET_STATUS[status as keyof typeof MECHANIC_FLEET_STATUS]?.label ??
+    status.replace(/_/g, " ")
+  );
+}
+
+export function getMechanicFleetBadgeClass(status: string): string {
+  return (
+    MECHANIC_FLEET_STATUS[status as keyof typeof MECHANIC_FLEET_STATUS]?.badge ??
+    "bg-muted text-muted-foreground border border-border"
+  );
+}

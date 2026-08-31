@@ -62,6 +62,18 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         }
       );
 
+      queryClient.setQueriesData<{ data: Booking[]; pagination: unknown }>(
+        { queryKey: ["customer-portal-bookings"] },
+        (old) => {
+          if (!old) return old;
+          const exists = old.data.some((b) => b.id === booking.id);
+          const data = exists
+            ? old.data.map((b) => (b.id === booking.id ? booking : b))
+            : [booking, ...old.data];
+          return { ...old, data };
+        }
+      );
+
       queryClient.setQueryData(["booking", booking.id], booking);
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["mechanics"] });

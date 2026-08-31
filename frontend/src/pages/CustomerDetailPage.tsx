@@ -3,7 +3,7 @@ import { paths } from "@/lib/paths";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import type { Booking } from "@/types";
+import type { Booking, Vehicle } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
   PageHeaderSkeleton,
@@ -12,22 +12,26 @@ import {
 import { ErrorState, EmptyState } from "@/components/ui/section-states";
 import { OpsBookingMobileCard } from "@/components/ops/OpsBookingMobileCard";
 
-interface MechanicDetail {
+interface CustomerDetail {
   id: string;
   name: string;
   email: string;
-  status: string;
-  jobsCompleted: number;
-  specialty?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  createdAt: string;
+  vehicleCount: number;
+  bookingCount: number;
+  totalSpent: number;
+  vehicles: Vehicle[];
   bookings: Booking[];
 }
 
-export function MechanicDetailPage() {
+export function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>();
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["mechanic", id],
-    queryFn: () => api.get<MechanicDetail>(`/api/mechanics/${id}`),
+    queryKey: ["customer", id],
+    queryFn: () => api.get<CustomerDetail>(`/api/customers/${id}`),
     enabled: !!id,
   });
 
@@ -54,22 +58,28 @@ export function MechanicDetailPage() {
   if (isError || !data) {
     return (
       <ErrorState
-        title="Mechanic not found"
+        title="Customer not found"
         onRetry={() => refetch()}
       />
     );
   }
 
   const statCards = [
-    { label: "Status", value: data.status.replace(/_/g, " ") },
-    { label: "Jobs completed", value: String(data.jobsCompleted) },
-    { label: "Specialty", value: data.specialty ?? "General" },
+    { label: "Vehicles", value: String(data.vehicleCount) },
+    { label: "Bookings", value: String(data.bookingCount) },
+    { label: "Total spent", value: formatCurrency(data.totalSpent) },
   ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-section font-semibold tracking-tight">{data.name}</h1>
+        <Link
+          to={paths.customers}
+          className="text-meta text-muted-foreground hover:text-foreground hover:underline"
+        >
+          Back to customers
+        </Link>
+        <h1 className="mt-2 text-section font-semibold tracking-tight">{data.name}</h1>
         <p className="text-body text-muted-foreground">{data.email}</p>
       </div>
 
@@ -84,29 +94,68 @@ export function MechanicDetailPage() {
         ))}
       </div>
 
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="ops-panel p-4">
+          <h2 className="text-body font-semibold">Contact</h2>
+          <dl className="mt-3 space-y-2 text-body">
+            <div>
+              <dt className="text-meta">Phone</dt>
+              <dd>{data.phone ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-meta">Address</dt>
+              <dd className="text-muted-foreground">{data.address ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-meta">Member since</dt>
+              <dd className="text-muted-foreground">{formatDate(data.createdAt)}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div className="ops-panel p-4">
+          <h2 className="text-body font-semibold">Vehicles</h2>
+          {data.vehicles.length === 0 ? (
+            <p className="mt-3 text-body text-muted-foreground">No vehicles on file.</p>
+          ) : (
+            <ul className="mt-3 divide-y divide-border">
+              {data.vehicles.map((v) => (
+                <li key={v.id} className="py-2 text-body">
+                  {v.year} {v.make} {v.model}
+                  <span className="ml-2 font-mono text-meta tabular-nums text-muted-foreground">
+                    {v.plate}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
       <section>
-        <h2 className="mb-4 text-body font-semibold">Recent bookings</h2>
+        <h2 className="mb-4 text-body font-semibold">Booking history</h2>
         {data.bookings.length === 0 ? (
           <EmptyState
             title="No bookings yet"
-            description="This mechanic hasn't been assigned any jobs."
+            description="This customer hasn't booked any services."
           />
         ) : (
           <>
             <div className="space-y-3 md:hidden">
               {data.bookings.map((b) => (
-                <OpsBookingMobileCard key={b.id} booking={b} showMechanic={false} />
+                <OpsBookingMobileCard key={b.id} booking={b} showBookingId />
               ))}
             </div>
             <div className="ops-panel overflow-hidden hidden md:block">
             <table className="ops-table">
               <thead>
                 <tr>
-                  <th>Customer</th>
+                  <th>Booking</th>
                   <th>Service</th>
                   <th>Status</th>
                   <th className="num">Amount</th>
                   <th>Scheduled</th>
+                  <th>Mechanic</th>
                 </tr>
               </thead>
               <tbody>
@@ -115,9 +164,9 @@ export function MechanicDetailPage() {
                     <td>
                       <Link
                         to={paths.booking(b.id)}
-                        className="font-medium text-foreground underline-offset-4 hover:underline"
+                        className="font-mono text-body font-medium tabular-nums text-foreground underline-offset-4 hover:underline"
                       >
-                        {b.customer.user.name}
+                        {b.id.slice(0, 8).toUpperCase()}
                       </Link>
                     </td>
                     <td>{b.serviceCategory.name}</td>
@@ -127,6 +176,9 @@ export function MechanicDetailPage() {
                     <td className="num">{formatCurrency(b.amount)}</td>
                     <td className="text-muted-foreground">
                       {formatDate(b.scheduledAt)}
+                    </td>
+                    <td className="text-muted-foreground">
+                      {b.mechanic?.user.name ?? "—"}
                     </td>
                   </tr>
                 ))}

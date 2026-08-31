@@ -7,7 +7,7 @@ import { WakingUpProvider, WakingUpOverlay } from "@/contexts/WakingUpContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { RoleGuard } from "@/components/RoleGuard";
 import { MarketingLayout } from "@/components/layout/MarketingLayout";
-import { AppLayout } from "@/components/layout/AppLayout";
+import { AppShell } from "@/components/layout/AppShell";
 import { LandingPage } from "@/pages/LandingPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { SignupPage } from "@/pages/SignupPage";
@@ -18,7 +18,11 @@ import { BookingDetailPage } from "@/pages/BookingDetailPage";
 import { MechanicsPage } from "@/pages/MechanicsPage";
 import { MechanicDetailPage } from "@/pages/MechanicDetailPage";
 import { CustomersPage } from "@/pages/CustomersPage";
-import { CreateBookingPage } from "@/pages/CreateBookingPage";
+import { CustomerDetailPage } from "@/pages/CustomerDetailPage";
+import { CustomerBookPage } from "@/pages/customer/CustomerBookPage";
+import { CustomerHistoryPage } from "@/pages/customer/CustomerHistoryPage";
+import { CustomerVehiclesPage } from "@/pages/customer/CustomerVehiclesPage";
+import { CustomerAccountPage } from "@/pages/customer/CustomerAccountPage";
 import { paths } from "@/lib/paths";
 
 const queryClient = new QueryClient({
@@ -45,7 +49,7 @@ export function App() {
                 </Route>
 
                 <Route path={paths.home} element={<ProtectedRoute />}>
-                  <Route element={<AppLayout />}>
+                  <Route element={<AppShell />}>
                     <Route index element={<HomePage />} />
                     <Route
                       path="analytics"
@@ -60,7 +64,47 @@ export function App() {
                       path="bookings/new"
                       element={
                         <RoleGuard roles={["CUSTOMER"]}>
-                          <CreateBookingPage />
+                          <Navigate to={paths.customerBook} replace />
+                        </RoleGuard>
+                      }
+                    />
+                    <Route
+                      path="profile"
+                      element={
+                        <RoleGuard roles={["CUSTOMER"]}>
+                          <Navigate to={paths.customerAccount} replace />
+                        </RoleGuard>
+                      }
+                    />
+                    <Route
+                      path="book"
+                      element={
+                        <RoleGuard roles={["CUSTOMER"]}>
+                          <CustomerBookPage />
+                        </RoleGuard>
+                      }
+                    />
+                    <Route
+                      path="history"
+                      element={
+                        <RoleGuard roles={["CUSTOMER"]}>
+                          <CustomerHistoryPage />
+                        </RoleGuard>
+                      }
+                    />
+                    <Route
+                      path="vehicles"
+                      element={
+                        <RoleGuard roles={["CUSTOMER"]}>
+                          <CustomerVehiclesPage />
+                        </RoleGuard>
+                      }
+                    />
+                    <Route
+                      path="account"
+                      element={
+                        <RoleGuard roles={["CUSTOMER"]}>
+                          <CustomerAccountPage />
                         </RoleGuard>
                       }
                     />
@@ -86,6 +130,14 @@ export function App() {
                       element={
                         <RoleGuard roles={["ADMIN"]}>
                           <CustomersPage />
+                        </RoleGuard>
+                      }
+                    />
+                    <Route
+                      path="customers/:id"
+                      element={
+                        <RoleGuard roles={["ADMIN"]}>
+                          <CustomerDetailPage />
                         </RoleGuard>
                       }
                     />

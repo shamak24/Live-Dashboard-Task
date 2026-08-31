@@ -5,6 +5,7 @@ import { Role } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { authenticate, signToken, type AuthRequest } from "../middleware/auth.js";
 import { createError } from "../middleware/errorHandler.js";
+import { logUserRegistered } from "../services/activityLogHelpers.js";
 
 const router = Router();
 
@@ -113,6 +114,10 @@ router.post("/register", async (req, res, next) => {
         }),
       },
     });
+
+    if (role === Role.CUSTOMER || role === Role.MECHANIC) {
+      logUserRegistered(user.name, role);
+    }
 
     const token = signToken({
       userId: user.id,

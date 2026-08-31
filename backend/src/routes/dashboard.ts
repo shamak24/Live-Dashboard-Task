@@ -1,12 +1,45 @@
 import { Router } from "express";
+import { z } from "zod";
 import { BookingStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { authenticate, requireRoles } from "../middleware/auth.js";
+import { getRecentActivityLogs } from "../services/activityLogService.js";
 import chartsRoutes from "./charts.js";
 
 const router = Router();
 
 router.use("/charts", chartsRoutes);
+
+const activityLogQuerySchema = z.object({
+  limit: z.coerce.number().int().min(5).max(15).default(10),
+});
+
+/**
+ * @openapi
+ * /api/dashboard/activity-logs:
+ *   get:
+ *     summary: Recent ops activity log (admin only, max 15 stored)
+ *     tags: [Dashboard]
+ */
+router.get(
+  "/activity-logs",
+  authenticate,
+  requireRoles("ADMIN"),
+  async (req, res, next) => {
+    try {
+      const { limit } = activityLogQuerySchema.parse(req.query);
+      const logs = await getRecentActivityLogs(limit);
+      res.json({
+        data: logs.map((log) => ({
+          ...log,
+          createdAt: log.createdAt.toISOString(),
+        })),
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
 
 /**
  * @openapi

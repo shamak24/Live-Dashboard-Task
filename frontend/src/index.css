@@ -28,6 +28,8 @@
   --status-completed: #1fa971;
   --status-cancelled: #e5484d;
 
+  --color-live: #2f5dff;
+
   --radius-sm: 8px;
   --radius-md: 8px;
   --radius-lg: 12px;
@@ -45,6 +47,7 @@
   --color-border: #262a32;
   --color-accent: #262a32;
   --color-accent-foreground: #f2f3f5;
+  --color-live: #5b7fff;
 }
 
 * {
@@ -137,6 +140,15 @@ body {
   font-size: 12px;
   font-weight: 500;
   color: var(--color-muted-foreground);
+  background: color-mix(in srgb, var(--color-muted) 25%, transparent);
+}
+
+.ops-table th.num {
+  text-align: right;
+}
+
+.ops-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .ops-table td {
@@ -166,6 +178,138 @@ body {
   background: var(--color-card);
 }
 
+.ops-toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--color-border);
+  margin: 0 4px;
+}
+
+.ops-select {
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  padding: 0 12px;
+  font-size: 14px;
+  color: var(--color-foreground);
+}
+
+.ops-select:hover {
+  background: color-mix(in srgb, var(--color-muted) 35%, transparent);
+}
+
+.ops-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.ops-nav-link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.ops-stat-hero {
+  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-border));
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-primary) 5%, var(--color-card));
+}
+
+/* Ops mobile — admin/mechanic console on phones */
+@media (max-width: 767px) {
+  .ops-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .ops-toolbar > * {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .ops-toolbar .relative {
+    width: 100%;
+  }
+
+  .ops-select {
+    width: 100%;
+    min-height: 40px;
+  }
+
+  .ops-toolbar-divider {
+    display: none;
+  }
+
+  .ops-mobile-stack {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .ops-stat-hero p.font-mono {
+    font-size: 28px;
+  }
+
+  .ops-panel .ops-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+.ops-mobile-nav {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  gap: 2px;
+  padding: 4px 4px 0;
+}
+
+.ops-mobile-nav-link {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.2;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.ops-mobile-nav-link.active {
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.ops-mobile-nav-link:not(.active) {
+  color: var(--color-muted-foreground);
+}
+
+.ops-booking-card {
+  display: block;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-card);
+  padding: 16px;
+  transition: background-color 0.15s;
+}
+
+.ops-booking-card:active {
+  background: color-mix(in srgb, var(--color-muted) 35%, transparent);
+}
+
 .ops-panel {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -191,6 +335,31 @@ body {
 .landing-display {
   font-size: clamp(2.5rem, 5vw + 1rem, 4.5rem);
   line-height: 1.05;
+}
+
+/* Customer portal — warmer, more spacious consumer UI */
+.customer-portal {
+  --customer-card-shadow: 0 8px 32px color-mix(in srgb, var(--color-primary) 10%, transparent);
+  --customer-glow: 0 4px 20px color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+
+.customer-card {
+  border-radius: 16px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  box-shadow: var(--customer-card-shadow);
+}
+
+.customer-headline {
+  font-size: clamp(1.75rem, 4vw + 0.5rem, 2rem);
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.customer-body {
+  font-size: 16px;
+  line-height: 1.5;
 }
 
 @media (prefers-reduced-motion: reduce) {

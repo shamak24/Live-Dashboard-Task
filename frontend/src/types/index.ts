@@ -109,3 +109,9 @@ export interface BreakdownItem {
   category?: string;
   count: number;
 }
+
+export interface ActivityLog {
+  id: string;
+  message: string;
+  createdAt: string;
+}

@@ -14,19 +14,19 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between",
+        "flex flex-col gap-3 border-b border-border pb-4 sm:pb-6 sm:flex-row sm:items-end sm:justify-between",
         className
       )}
     >
       <div>
-        <h1 className="text-section font-semibold tracking-tight md:text-[20px]">
+        <h1 className="text-lg font-semibold tracking-tight sm:text-section md:text-[20px]">
           {title}
         </h1>
         {description && (
           <p className="mt-1 text-body text-muted-foreground">{description}</p>
         )}
       </div>
-      {action && <div className="shrink-0">{action}</div>}
+      {action && <div className="shrink-0 w-full sm:w-auto">{action}</div>}
     </div>
   );
 }
@@ -42,9 +42,9 @@ export function StatCard({
 }) {
   if (variant === "hero") {
     return (
-      <div className="ops-panel px-5 py-4">
+      <div className="ops-stat-hero px-4 py-4">
         <p className="text-meta">{label}</p>
-        <p className="mt-2 font-mono text-[36px] font-semibold tabular-nums leading-none text-foreground">
+        <p className="mt-2 font-mono text-[28px] sm:text-[36px] font-semibold tabular-nums leading-none text-foreground">
           {value}
         </p>
       </div>
@@ -55,7 +55,7 @@ export function StatCard({
     return (
       <div className="ops-panel px-4 py-3">
         <p className="text-meta">{label}</p>
-        <p className="mt-1 font-mono text-[28px] font-semibold tabular-nums leading-tight">
+        <p className="mt-1 font-mono text-2xl sm:text-[28px] font-semibold tabular-nums leading-tight">
           {value}
         </p>
       </div>

@@ -70,7 +70,8 @@ export async function simulateBookingAdvance(io?: Server): Promise<number> {
         booking.id,
         nextStatus,
         nextStatus === BookingStatus.ASSIGNED ? mechanicId ?? undefined : undefined,
-        booking.version
+        booking.version,
+        { source: "demo" }
       );
 
       const payload = { ...updated, amount: Number(updated.amount) };

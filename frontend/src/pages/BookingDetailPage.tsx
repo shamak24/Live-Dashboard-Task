@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import type { Booking, MechanicListItem } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -97,12 +97,12 @@ export function BookingDetailPage() {
         <PageHeaderSkeleton />
         <DetailCardsSkeleton count={4} />
         <div className="space-y-4">
-          <div className="ops-panel p-5 space-y-2">
+      <div className="ops-panel p-4 space-y-2">
             <div className="h-5 w-40 rounded skeleton-shimmer" />
             <div className="h-4 w-full rounded skeleton-shimmer" />
             <div className="h-4 w-4/5 rounded skeleton-shimmer" />
           </div>
-          <div className="ops-panel p-5 space-y-2">
+      <div className="ops-panel p-4 space-y-2">
             <div className="h-5 w-40 rounded skeleton-shimmer" />
             <div className="h-4 w-full rounded skeleton-shimmer" />
             <div className="h-4 w-3/4 rounded skeleton-shimmer" />
@@ -196,7 +196,7 @@ export function BookingDetailPage() {
       </div>
 
       {canUpdateStatus && nextStatuses.length > 0 && (
-        <div className="ops-panel p-5 space-y-3">
+        <div className="ops-panel p-4 space-y-4">
           <h2 className="text-body font-semibold">Update status</h2>
           {needsMechanicPick && (
             <div className="space-y-2">
@@ -226,11 +226,14 @@ export function BookingDetailPage() {
               )}
             </div>
           )}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             {nextStatuses.map((status) => (
               <Button
                 key={status}
-                size="sm"
+                className={cn(
+                  "h-11 min-w-[140px]",
+                  user?.role === "MECHANIC" && "flex-1 sm:flex-none"
+                )}
                 variant={status === "CANCELLED" ? "outline" : "default"}
                 loading={statusMutation.isPending}
                 loadingText="Updating..."
@@ -245,7 +248,7 @@ export function BookingDetailPage() {
 
       <div className="grid gap-4 md:grid-cols-2">
         {infoCards.map((card) => (
-          <div key={card.title} className="ops-panel p-5">
+          <div key={card.title} className="ops-panel p-4">
             <h3 className="text-body font-semibold">{card.title}</h3>
             <div className="mt-3">{card.content}</div>
           </div>

@@ -44,7 +44,7 @@ const AXIS_TICK = { fontSize: 11, fill: "var(--color-muted-foreground)" };
 
 function ChartContainer({ children }: { children: React.ReactElement }) {
   return (
-    <div className="h-[280px] w-full min-w-0">
+    <div className="h-[220px] sm:h-[280px] w-full min-w-0">
       <ResponsiveContainer width="100%" height="100%">
         {children}
       </ResponsiveContainer>
@@ -77,7 +77,7 @@ function ChartSection({
 
   if (isError) {
     return (
-      <div className="ops-panel p-5">
+      <div className="ops-panel p-4">
         <h3 className="text-body font-semibold">{title}</h3>
         <div className="mt-4">
           <ErrorState
@@ -92,7 +92,7 @@ function ChartSection({
 
   if (isEmpty) {
     return (
-      <div className="ops-panel p-5">
+      <div className="ops-panel p-4">
         <h3 className="text-body font-semibold">{title}</h3>
         <div className="mt-4">
           <EmptyState title={emptyMessage ?? "No data for this period"} />
@@ -102,7 +102,7 @@ function ChartSection({
   }
 
   return (
-    <div className="ops-panel p-5">
+    <div className="ops-panel p-4">
       <h3 className="text-body font-semibold">{title}</h3>
       <div className="mt-4">{children}</div>
     </div>

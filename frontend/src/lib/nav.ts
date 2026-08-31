@@ -5,7 +5,6 @@ import {
   Calendar,
   Wrench,
   Users,
-  CalendarPlus,
 } from "lucide-react";
 import type { User } from "@/types";
 import { paths } from "@/lib/paths";
@@ -35,11 +34,22 @@ export function getNavItems(role: User["role"]): NavItem[] {
     ];
   }
 
-  return [
-    { to: paths.home, label: "My Bookings", icon: Calendar, end: true },
-    { to: paths.bookingsNew, label: "Book Service", icon: CalendarPlus },
-    { to: paths.bookings, label: "Booking History", icon: LayoutDashboard },
-  ];
+  // Customers use the consumer portal bottom nav (CustomerLayout)
+  return [];
 }
 
 export const ADMIN_ONLY_PATHS = [paths.analytics, paths.mechanics, paths.customers];
+
+/** Title for mobile ops header based on current route */
+export function getOpsMobileTitle(pathname: string, role: User["role"]): string {
+  if (/\/bookings\/[^/]+/.test(pathname)) return "Booking";
+  if (/\/mechanics\/[^/]+/.test(pathname)) return "Mechanic";
+  if (/\/customers\/[^/]+/.test(pathname)) return "Customer";
+
+  const items = getNavItems(role);
+  for (const item of items) {
+    if (item.end && pathname === item.to) return item.label;
+    if (!item.end && pathname.startsWith(item.to)) return item.label;
+  }
+  return "Dashboard";
+}
