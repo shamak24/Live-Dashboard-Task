@@ -10,8 +10,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Booking } from "@/types";
 
-const SOCKET_URL =
-  import.meta.env.VITE_API_URL || window.location.origin;
+const SOCKET_URL = String(import.meta.env.VITE_API_URL || "").replace(/\/+$/, "") ||
+  window.location.origin;
 
 interface SocketContextValue {
   socket: Socket | null;

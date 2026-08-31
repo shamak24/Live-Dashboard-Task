@@ -2,8 +2,14 @@ import type { CorsOptions } from "cors";
 
 const DEFAULT_FRONTEND_URL = "http://localhost:5173";
 
+/** Strip trailing slashes so env typos don't break origin matching */
+export function normalizeOrigin(origin: string): string {
+  return origin.trim().replace(/\/+$/, "");
+}
+
 export function getAllowedOrigins(): string[] {
-  const fromEnv = process.env.FRONTEND_URL?.split(",").map((o) => o.trim()) ?? [];
+  const fromEnv =
+    process.env.FRONTEND_URL?.split(",").map((o) => normalizeOrigin(o)) ?? [];
   const defaults = [
     DEFAULT_FRONTEND_URL,
     "http://127.0.0.1:5173",
@@ -11,7 +17,7 @@ export function getAllowedOrigins(): string[] {
     "http://127.0.0.1:4173",
     "http://localhost:4173",
   ];
-  return [...new Set([...fromEnv, ...defaults].filter(Boolean))];
+  return [...new Set([...fromEnv, ...defaults].map(normalizeOrigin).filter(Boolean))];
 }
 
 export function createCorsOptions(): CorsOptions {
@@ -25,15 +31,20 @@ export function createCorsOptions(): CorsOptions {
         return;
       }
 
+      const normalized = normalizeOrigin(origin);
+
       if (
-        allowedOrigins.includes(origin) ||
+        allowedOrigins.includes(normalized) ||
         (process.env.NODE_ENV === "development" &&
-          /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin))
+          /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(normalized))
       ) {
         callback(null, origin);
         return;
       }
 
+      console.warn(
+        `[CORS] Blocked origin: ${origin}. Allowed: ${allowedOrigins.join(", ")}`
+      );
       callback(new Error(`CORS blocked for origin: ${origin}`));
     },
     credentials: true,
@@ -47,8 +58,9 @@ export function applyCorsHeaders(req: { headers: { origin?: string } }, res: {
 }) {
   const allowedOrigins = getAllowedOrigins();
   const origin = req.headers.origin;
+  const normalized = origin ? normalizeOrigin(origin) : undefined;
 
-  if (!origin || allowedOrigins.includes(origin)) {
+  if (!origin || allowedOrigins.includes(normalized!)) {
     res.setHeader("Access-Control-Allow-Origin", origin ?? DEFAULT_FRONTEND_URL);
     res.setHeader("Access-Control-Allow-Credentials", "true");
   }

@@ -1,4 +1,10 @@
-const API_URL = import.meta.env.VITE_API_URL || "";
+/** Base API URL without trailing slash (avoids `//api/...` URLs) */
+const API_URL = String(import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
+
+function buildApiUrl(path: string): string {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return API_URL ? `${API_URL}${normalizedPath}` : normalizedPath;
+}
 
 export interface FetchOptions extends RequestInit {
   timeout?: number;
@@ -29,7 +35,7 @@ export async function apiFetch<T>(
   options: FetchOptions = {}
 ): Promise<T> {
   const { timeout = 60000, retries = 3, ...fetchOptions } = options;
-  const url = `${API_URL}${path}`;
+  const url = buildApiUrl(path);
 
   let attempt = 0;
   let showWaking = false;
