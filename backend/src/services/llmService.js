@@ -1,10 +1,10 @@
 /**
  * LLM service for generating pre-visit and post-visit booking summaries.
- * Uses Google Gemini 3.7 Flash via GEMINI_API_KEY.
+ * Uses Google Gemini via GEMINI_API_KEY (default: gemini-3.6-flash).
  * Failures are logged and return null — never block booking operations.
  */
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.7-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.6-flash";
 const GEMINI_API_BASE =
   "https://generativelanguage.googleapis.com/v1beta/models";
 
@@ -64,13 +64,13 @@ async function callGemini(prompt, attempt = 1) {
     {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
-        maxOutputTokens: 256,
+        maxOutputTokens: 512,
         thinkingConfig: { thinkingLevel: "LOW" },
       },
     },
     {
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: 256 },
+      generationConfig: { maxOutputTokens: 512 },
     },
   ];
 

@@ -14,85 +14,154 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { api } from "@/lib/api";
-import type { ChartDataPoint, BreakdownItem } from "@/types";
+import { api, ApiError } from "@/lib/api";
+import type { BreakdownItem } from "@/types";
 import { getStatusColor } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency } from "@/lib/utils";
+import { ChartSkeleton } from "@/components/ui/loading-skeletons";
+import { ErrorState, EmptyState } from "@/components/ui/section-states";
+import { PageHeader } from "@/components/PageHeader";
+import { formatCurrency, cn } from "@/lib/utils";
 
-export function AnalyticsPage() {
-  const bookingsQuery = useQuery({
-    queryKey: ["analytics", "bookings"],
-    queryFn: () =>
-      api.get<{ data: ChartDataPoint[] }>("/api/analytics/bookings-over-time"),
-  });
+interface AnalyticsSummary {
+  bookingsOverTime: { date: string; count: number }[];
+  revenueOverTime: { date: string; revenue: number }[];
+  statusBreakdown: BreakdownItem[];
+  categoryBreakdown: BreakdownItem[];
+}
 
-  const revenueQuery = useQuery({
-    queryKey: ["analytics", "revenue"],
-    queryFn: () =>
-      api.get<{ data: ChartDataPoint[] }>("/api/analytics/revenue-over-time"),
-  });
+function ChartContainer({ children }: { children: React.ReactElement }) {
+  return (
+    <div className="h-[280px] w-full min-w-0">
+      <ResponsiveContainer width="100%" height="100%">
+        {children}
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
-  const statusQuery = useQuery({
-    queryKey: ["analytics", "status"],
-    queryFn: () =>
-      api.get<{ data: BreakdownItem[] }>("/api/analytics/status-breakdown"),
-  });
-
-  const categoryQuery = useQuery({
-    queryKey: ["analytics", "category"],
-    queryFn: () =>
-      api.get<{ data: BreakdownItem[] }>("/api/analytics/category-breakdown"),
-  });
-
-  const isLoading =
-    bookingsQuery.isLoading ||
-    revenueQuery.isLoading ||
-    statusQuery.isLoading ||
-    categoryQuery.isLoading;
-
+function ChartSection({
+  title,
+  isLoading,
+  isError,
+  errorMessage,
+  isEmpty,
+  emptyMessage,
+  onRetry,
+  index,
+  children,
+}: {
+  title: string;
+  isLoading: boolean;
+  isError: boolean;
+  errorMessage?: string;
+  isEmpty?: boolean;
+  emptyMessage?: string;
+  onRetry?: () => void;
+  index: number;
+  children: React.ReactNode;
+}) {
   if (isLoading) {
+    return <ChartSkeleton className={cn(`stagger-${Math.min(index + 1, 4)}`)} />;
+  }
+
+  if (isError) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <div className="grid gap-4 md:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-72" />
-          ))}
-        </div>
-      </div>
+      <Card className={cn("animate-fade-in-up", `stagger-${Math.min(index + 1, 4)}`)}>
+        <CardHeader>
+          <CardTitle className="text-base">{title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ErrorState
+            title="Chart failed to load"
+            message={errorMessage}
+            onRetry={onRetry}
+          />
+        </CardContent>
+      </Card>
     );
   }
 
-  const statusData = statusQuery.data?.data.map((d) => ({
-    name: d.status?.replace(/_/g, " ") ?? "",
-    value: d.count,
-    color: getStatusColor(d.status ?? ""),
-  }));
+  if (isEmpty) {
+    return (
+      <Card className={cn("card-interactive animate-fade-in-up", `stagger-${Math.min(index + 1, 4)}`)}>
+        <CardHeader>
+          <CardTitle className="text-base">{title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EmptyState title={emptyMessage ?? "No data for this period"} />
+        </CardContent>
+      </Card>
+    );
+  }
 
-  const categoryData = categoryQuery.data?.data ?? [];
+  return (
+    <Card className={cn("card-interactive animate-fade-in-up", `stagger-${Math.min(index + 1, 4)}`)}>
+      <CardHeader>
+        <CardTitle className="text-base">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="animate-fade-in">{children}</CardContent>
+    </Card>
+  );
+}
+
+function formatTooltipCurrency(value: unknown) {
+  const num = typeof value === "number" ? value : Number(value);
+  return formatCurrency(Number.isFinite(num) ? num : 0);
+}
+
+export function AnalyticsPage() {
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ["analytics", "summary"],
+    queryFn: () => api.get<AnalyticsSummary>("/api/dashboard/charts/summary"),
+    retry: 3,
+    staleTime: 60000,
+  });
+
+  const errorMessage =
+    error instanceof ApiError
+      ? error.message
+      : error instanceof Error
+        ? error.message
+        : undefined;
+
+  const statusData =
+    data?.statusBreakdown.map((d) => ({
+      name: d.status?.replace(/_/g, " ") ?? "Unknown",
+      value: d.count,
+      color: getStatusColor(d.status ?? ""),
+    })) ?? [];
+
+  const categoryData = data?.categoryBreakdown ?? [];
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
-        <p className="text-sm text-muted-foreground">
-          Booking trends and revenue over the last 6 months
-        </p>
-      </div>
+      <PageHeader
+        title="Analytics"
+        description="Booking trends and revenue over the last 6 months"
+      />
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Bookings Over Time</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={bookingsQuery.data?.data ?? []}>
+      {isError && !isLoading ? (
+        <ErrorState
+          title="Failed to load analytics"
+          message={errorMessage}
+          onRetry={() => refetch()}
+        />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          <ChartSection
+            title="Bookings Over Time"
+            index={0}
+            isLoading={isLoading}
+            isError={false}
+            isEmpty={!isLoading && data?.bookingsOverTime.length === 0}
+            emptyMessage="No bookings in this date range"
+          >
+            <ChartContainer>
+              <LineChart data={data?.bookingsOverTime ?? []}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip />
                 <Line
                   type="monotone"
@@ -100,41 +169,47 @@ export function AnalyticsPage() {
                   stroke="#3b82f6"
                   strokeWidth={2}
                   dot={false}
+                  animationDuration={800}
                 />
               </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+            </ChartContainer>
+          </ChartSection>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Revenue Over Time</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={revenueQuery.data?.data ?? []}>
+          <ChartSection
+            title="Revenue Over Time"
+            index={1}
+            isLoading={isLoading}
+            isError={false}
+            isEmpty={!isLoading && data?.revenueOverTime.length === 0}
+            emptyMessage="No completed bookings in this date range"
+          >
+            <ChartContainer>
+              <LineChart data={data?.revenueOverTime ?? []}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                <Tooltip formatter={formatTooltipCurrency} />
                 <Line
                   type="monotone"
                   dataKey="revenue"
                   stroke="#10b981"
                   strokeWidth={2}
                   dot={false}
+                  animationDuration={800}
                 />
               </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+            </ChartContainer>
+          </ChartSection>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Status Breakdown</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
+          <ChartSection
+            title="Status Breakdown"
+            index={2}
+            isLoading={isLoading}
+            isError={false}
+            isEmpty={!isLoading && statusData.length === 0}
+            emptyMessage="No status data for this period"
+          >
+            <ChartContainer>
               <PieChart>
                 <Pie
                   data={statusData}
@@ -144,37 +219,51 @@ export function AnalyticsPage() {
                   cy="50%"
                   outerRadius={90}
                   label={({ name, percent }) =>
-                    `${name} ${(percent * 100).toFixed(0)}%`
+                    `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
                   }
+                  animationDuration={800}
                 >
-                  {statusData?.map((entry, i) => (
+                  {statusData.map((entry, i) => (
                     <Cell key={i} fill={entry.color} />
                   ))}
                 </Pie>
                 <Tooltip />
                 <Legend />
               </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+            </ChartContainer>
+          </ChartSection>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Service Category Breakdown</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
+          <ChartSection
+            title="Service Category Breakdown"
+            index={3}
+            isLoading={isLoading}
+            isError={false}
+            isEmpty={!isLoading && categoryData.length === 0}
+            emptyMessage="No category data for this period"
+          >
+            <ChartContainer>
               <BarChart data={categoryData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="category" tick={{ fontSize: 10 }} angle={-20} textAnchor="end" height={60} />
-                <YAxis tick={{ fontSize: 11 }} />
+                <XAxis
+                  dataKey="category"
+                  tick={{ fontSize: 10 }}
+                  angle={-20}
+                  textAnchor="end"
+                  height={60}
+                />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip />
-                <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                <Bar
+                  dataKey="count"
+                  fill="#6366f1"
+                  radius={[4, 4, 0, 0]}
+                  animationDuration={800}
+                />
               </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
+            </ChartContainer>
+          </ChartSection>
+        </div>
+      )}
     </div>
   );
 }

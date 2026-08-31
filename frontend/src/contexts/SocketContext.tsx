@@ -9,7 +9,8 @@ import { io, type Socket } from "socket.io-client";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Booking } from "@/types";
 
-const SOCKET_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const SOCKET_URL =
+  import.meta.env.VITE_API_URL || window.location.origin;
 
 interface SocketContextValue {
   socket: Socket | null;

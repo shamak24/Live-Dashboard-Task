@@ -12,8 +12,9 @@ import {
 import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import type { DashboardStats } from "@/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader, StatCard } from "@/components/PageHeader";
+import { StatGridSkeleton, PageHeaderSkeleton } from "@/components/ui/loading-skeletons";
+import { ErrorState, InlineLoader } from "@/components/ui/section-states";
 
 const statConfig = [
   { key: "totalBookings", label: "Total Bookings", icon: Calendar, format: (v: number) => v.toLocaleString() },
@@ -27,65 +28,51 @@ const statConfig = [
 ] as const;
 
 export function OverviewPage() {
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ["dashboard"],
     queryFn: () => api.get<DashboardStats>("/api/dashboard"),
     refetchInterval: 30000,
   });
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-28" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-6 text-center">
-        <p className="text-destructive">Failed to load dashboard stats</p>
-        <button
-          className="mt-2 text-sm text-primary underline"
-          onClick={() => refetch()}
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
-        <p className="text-sm text-muted-foreground">
-          Live operations snapshot for Instant Mechanic
-        </p>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {statConfig.map(({ key, label, icon: Icon, format }) => (
-          <Card key={key}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {label}
-              </CardTitle>
-              <Icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {format(data![key as keyof DashboardStats] as number)}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {isLoading ? (
+        <>
+          <PageHeaderSkeleton />
+          <StatGridSkeleton />
+        </>
+      ) : isError ? (
+        <>
+          <PageHeader
+            title="Overview"
+            description="Live operations snapshot for Instant Mechanic"
+          />
+          <ErrorState
+            title="Failed to load dashboard"
+            message="We couldn't fetch your stats. Check your connection and try again."
+            onRetry={() => refetch()}
+          />
+        </>
+      ) : (
+        <>
+          <PageHeader
+            title="Overview"
+            description="Live operations snapshot for Instant Mechanic"
+            action={isFetching ? <InlineLoader /> : undefined}
+          />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {statConfig.map(({ key, label, icon, format }, index) => (
+              <StatCard
+                key={key}
+                label={label}
+                icon={icon}
+                index={index}
+                value={format(data![key as keyof DashboardStats] as number)}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -7,22 +7,24 @@ import swaggerUi from "swagger-ui-express";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { swaggerSpec } from "./config/swagger.js";
+import { createCorsOptions, applyCorsHeaders, getAllowedOrigins } from "./config/cors.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import authRoutes from "./routes/auth.js";
 import dashboardRoutes from "./routes/dashboard.js";
 import bookingsRoutes from "./routes/bookings.js";
 import mechanicsRoutes from "./routes/mechanics.js";
 import customersRoutes from "./routes/customers.js";
-import analyticsRoutes from "./routes/analytics.js";
 
 const app = express();
 const httpServer = createServer(app);
 const PORT = process.env.PORT || 3001;
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+
+const corsOptions = createCorsOptions();
+const socketOrigins = getAllowedOrigins();
 
 const io = new Server(httpServer, {
   cors: {
-    origin: FRONTEND_URL,
+    origin: socketOrigins,
     credentials: true,
   },
 });
@@ -36,12 +38,8 @@ io.on("connection", (socket) => {
   });
 });
 
-app.use(
-  cors({
-    origin: FRONTEND_URL,
-    credentials: true,
-  })
-);
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 app.use(express.json());
 app.use(cookieParser());
@@ -51,7 +49,10 @@ const limiter = rateLimit({
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Too many requests, please try again later" },
+  handler: (req, res) => {
+    applyCorsHeaders(req, res);
+    res.status(429).json({ error: "Too many requests, please try again later" });
+  },
 });
 
 app.use("/api", limiter);
@@ -80,7 +81,8 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/bookings", bookingsRoutes);
 app.use("/api/mechanics", mechanicsRoutes);
 app.use("/api/customers", customersRoutes);
-app.use("/api/analytics", analyticsRoutes);
+
+// Chart data is mounted under /api/dashboard/charts (see dashboard.ts)
 
 // Admin demo endpoint to trigger live booking simulation
 app.post("/api/demo/simulate", async (_req, res) => {

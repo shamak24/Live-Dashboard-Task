@@ -2,8 +2,11 @@ import { Router } from "express";
 import { BookingStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { authenticate, requireRoles } from "../middleware/auth.js";
+import chartsRoutes from "./charts.js";
 
 const router = Router();
+
+router.use("/charts", chartsRoutes);
 
 /**
  * @openapi

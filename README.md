@@ -20,7 +20,7 @@ The monorepo contains:
 | Backend | Node.js, Express, TypeScript, Prisma ORM, Socket.IO, Zod validation |
 | Database | PostgreSQL (Neon free tier in prod, Docker locally) |
 | Auth | JWT in httpOnly cookies, role-based access control |
-| LLM | Google Gemini 3.7 Flash via `llmService.js` |
+| LLM | Google Gemini 3.6 Flash via `llmService.js` |
 | API Docs | Swagger/OpenAPI at `/api-docs` |
 | CI | GitHub Actions (lint + build) |
 | Deployment | Vercel (frontend), Render (backend), Neon (DB) |
@@ -129,7 +129,7 @@ bun run dev
 | `NODE_ENV` | `development` or `production` |
 | `FRONTEND_URL` | Vercel frontend URL for CORS (e.g. `http://localhost:5173`) |
 | `GEMINI_API_KEY` | Google AI Studio / Gemini API key for LLM summaries |
-| `GEMINI_MODEL` | Gemini model ID (default: `gemini-3.7-flash`) |
+| `GEMINI_MODEL` | Gemini model ID (default: `gemini-3.6-flash`) |
 | `API_URL` | Public API URL for Swagger docs |
 
 ### Frontend (`frontend/.env`)
@@ -157,7 +157,7 @@ bun run dev
 | GET | `/api/mechanics` | Mechanics list with current booking |
 | GET | `/api/mechanics/:id` | Mechanic detail |
 | GET | `/api/customers` | Customers list (admin) |
-| GET | `/api/analytics/*` | Chart data endpoints |
+| GET | `/api/dashboard/charts/*` | Chart data for Analytics page |
 | POST | `/api/demo/simulate` | Advance random bookings for live demo |
 
 ## Deployment
@@ -205,7 +205,7 @@ Render's free tier spins down after ~15 minutes of inactivity. The next request 
 | Tool | Used For | Personally Modified |
 |------|----------|---------------------|
 | Cursor / Claude | Scaffolded monorepo structure, Prisma schema, Express routes, React pages, seed script, README | WebSocket broadcast + TanStack Query cache integration, double-booking transaction with `FOR UPDATE`, cold-start fetch wrapper and waking-up UI |
-| Google Gemini API | Pre/post-visit booking summaries via `llmService.js` (`gemini-3.7-flash`) | Prompt structure, retries on 503, template fallback when API unavailable |
+| Google Gemini API | Pre/post-visit booking summaries via `llmService.js` (`gemini-3.6-flash`) | Prompt structure, retries on 503, template fallback when API unavailable |
 | — | — | Auth RBAC middleware, optimistic concurrency `version` field, CSV export, dark mode, demo simulate button |
 
 **Honest breakdown:** AI assisted with scaffolding and boilerplate (component structure, route patterns, seed data generation). The concurrency-safe mechanic assignment, real-time cache updates, and cold-start UX were implemented and tested manually. LLM integration includes template fallbacks so the app works without API keys.

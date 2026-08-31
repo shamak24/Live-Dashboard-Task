@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
+import { applyCorsHeaders } from "../config/cors.js";
 
 export interface ApiError extends Error {
   statusCode?: number;
@@ -8,10 +9,12 @@ export interface ApiError extends Error {
 
 export function errorHandler(
   err: ApiError,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction
 ) {
+  applyCorsHeaders(req, res);
+
   if (err instanceof ZodError) {
     return res.status(400).json({
       error: "Validation failed",
